@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "334101890812",
+    "project_id": "icare-f2f42",
+    "storage_bucket": "icare-f2f42.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:334101890812:android:d181bdaf2a2524002b3979",
+        "android_client_info": {
+          "package_name": "com.example.icare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfVFVYBC6wTOY7fMcoPwtLidl_Wf-KFSk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
