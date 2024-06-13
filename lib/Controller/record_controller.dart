@@ -38,15 +38,19 @@ class RecordController {
   }
 
   Future<List<RecordModel>> fetchSensorDataFromBackend() async {
-    final url = Uri.parse('http://your-backend-url.com/sensor/firebase');
-    final response = await http.get(url);
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonData = jsonDecode(response.body);
-      return jsonData.map((data) => RecordModel.fromJson(data)).toList();
-    } else {
+    try {
+      final url = Uri.parse('$baseUrl/sensor/firebase');  // Adjust the endpoint to your backend's route
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final List<dynamic> jsonData = jsonDecode(response.body);
+        return jsonData.map((data) => RecordModel.fromJson(data)).toList();
+      } else {
+        throw Exception('Failed to fetch data');
+      }
+    } catch (e) {
+      print('Error: $e');
       throw Exception('Failed to fetch data');
     }
   }
-
 }
-

@@ -38,38 +38,80 @@ class _RecordPageState extends State<RecordPage> {
   Future<void> fetchSensorData() async {
     final newData = await _recordController.fetchSensorData();
     if (newData != null) {
-      final newDataString = newData['date'].toString() + newData['fall'].toString();
-      if (newDataString != _lastFetchedDataString && newData['date'] != null && newData['fall'] != null) {
+      final newDataString = '${newData['date']}${newData['fall']}';
+      if (newDataString != _lastFetchedDataString &&
+          newData['date'] != null &&
+          newData['fall'] != null) {
         final record = RecordModel.fromJson(newData);
         setState(() {
           _fallRecords.add(record);
           _lastFetchedDataString = newDataString;
         });
-        await _recordController.sendFallData(record);  // Send data to backend
+        await _recordController.sendFallData(record); // Send data to backend
       }
     }
   }
 
+  void _showFallRecords(BuildContext context) async {
+    try {
+      List<RecordModel> historicalRecords =
+      await _recordController.fetchSensorDataFromBackend();
 
-  void _showFallRecords(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      builder: (BuildContext context) {
-        return Container(
-          height: MediaQuery.of(context).size.height * 0.5,
-          child: ListView.builder(
-            itemCount: _fallRecords.length,
-            itemBuilder: (context, index) {
-              final record = _fallRecords[index];
-              return ListTile(
-                title: Text('Date: ${record.date}'),
-                subtitle: Text('Fall Detected: ${record.fall}'),
-              );
-            },
-          ),
-        );
-      },
-    );
+      showModalBottomSheet(
+        context: context,
+        builder: (BuildContext context) {
+          return SingleChildScrollView(
+            child: Container(
+              padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 20.0),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(20.0),
+                  topRight: Radius.circular(20.0),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Historical Fall Records',
+                    style: TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  SizedBox(height: 20.0),
+                  ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: historicalRecords.length,
+                    itemBuilder: (context, index) {
+                      final record = historicalRecords[index];
+                      return ListTile(
+                        title: Text(
+                          'Date: ${record.date}',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        subtitle: Text(
+                          'Fall Detected: ${record.fall ?? false ? 'Yes' : 'No'}',
+                        ),
+                        trailing: Icon(
+                          record.fall ?? false ? Icons.error : Icons.check_circle,
+                          color: record.fall ?? false ? Colors.red : Colors.green,
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      );
+    } catch (e) {
+      print('Error fetching historical sensor data: $e');
+      // Handle error as per your application's requirement
+    }
   }
 
   @override
@@ -90,9 +132,25 @@ class _RecordPageState extends State<RecordPage> {
         itemCount: _fallRecords.length,
         itemBuilder: (context, index) {
           final record = _fallRecords[index];
-          return ListTile(
-            title: Text('Date: ${record.date}'),
-            subtitle: Text('Fall Detected: ${record.fall}'),
+          return Card(
+            elevation: 3.0,
+            margin: EdgeInsets.symmetric(
+              vertical: 8.0,
+              horizontal: 16.0,
+            ),
+            child: ListTile(
+              title: Text(
+                'Date: ${record.date}',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                'Fall Detected: ${record.fall ?? false ? 'Yes' : 'No'}',
+              ),
+              trailing: Icon(
+                record.fall ?? false ? Icons.error : Icons.check_circle,
+                color: record.fall ?? false ? Colors.red : Colors.green,
+              ),
+            ),
           );
         },
       ),
