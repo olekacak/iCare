@@ -1,18 +1,11 @@
-// Model (SignUpModel)
-import 'package:icare/Controller/login_controller.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../Controller/login_controller.dart';
 
 class LoginModel {
   String email;
   String password;
 
   LoginModel({required this.email, required this.password});
-
-  Map<String, dynamic> toJson() {
-    return {
-      'email': email,
-      'password': password,
-    };
-  }
 
   Future<bool> login() async {
     LoginController loginController = LoginController(path: "/auth/login");
@@ -25,13 +18,42 @@ class LoginModel {
       await loginController.post();
       if (loginController.status() == 200) {
         Map<String, dynamic> result = await loginController.result();
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        await prefs.setString('email', email);
+        print("Email saved to SharedPreferences: $email");
+
+        // // Store user data in SharedPreferences
+        // await _storeUserData(result);
+
         return true;
       }
       return false;
     } catch (e) {
-      print("Error creating a user $e");
+      print("Error logging in: $e");
       return false;
     }
   }
 
+  Future<void> _storeUserData(Map<String, dynamic> userData) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+
+    // Store each attribute from userData into SharedPreferences
+    userData.forEach((key, value) {
+      if (value is String) {
+        prefs.setString(key, value);
+      } else if (value is int) {
+        prefs.setInt(key, value);
+      } else if (value is bool) {
+        prefs.setBool(key, value);
+      } else if (value is double) {
+        prefs.setDouble(key, value);
+      } else if (value is List<String>) {
+        prefs.setStringList(key, value);
+      } else {
+        // Handle other types as needed
+        prefs.setString(key, value.toString()); // Fallback to store as string
+      }
+    });
+  }
 }

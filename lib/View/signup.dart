@@ -1,4 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:icare/Model/signup_model.dart';
 
 class SignUpPage extends StatefulWidget {
@@ -10,33 +13,89 @@ class _SignUpPageState extends State<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
+  late TextEditingController _nameController;
+  late TextEditingController _phoneNoController;
+  late TextEditingController _addressController;
+  late TextEditingController _birthDateController;
   late SignUpModel signUpModel;
   String _errorMessage = '';
+  File? _imageFile;
+  String? _selectedGender;
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController();
     _passwordController = TextEditingController();
-    signUpModel = SignUpModel(email: '', password: '');
+    _nameController = TextEditingController();
+    _phoneNoController = TextEditingController();
+    _addressController = TextEditingController();
+    _birthDateController = TextEditingController();
+    signUpModel = SignUpModel(
+      email: '',
+      password: '',
+      name: '',
+      phoneNo: '',
+      address: '',
+      birthDate: '',
+      gender: '',
+      profileImage: '',
+    );
+  }
+
+  Future<void> _selectImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        _imageFile = File(pickedFile.path);
+        signUpModel.profileImage = base64Encode(_imageFile!.readAsBytesSync());
+      });
+    }
+  }
+
+  Future<void> _selectBirthDate() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now(),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        _birthDateController.text = "${pickedDate.toLocal()}".split(' ')[0];
+        signUpModel.birthDate = _birthDateController.text;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5), // Light grey background color
+      backgroundColor: Colors.blueGrey[800],
       appBar: AppBar(
         title: Text('Sign Up'),
-        backgroundColor: Color(0xFFA673E5), // Light purple color
+        backgroundColor: Colors.tealAccent.withOpacity(0.4),
       ),
       body: Stack(
         children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blueGrey[800]!, Colors.tealAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+          ),
           Positioned(
             top: -50,
             left: -50,
             child: CircleAvatar(
               radius: 100,
-              backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+              backgroundColor: Colors.tealAccent.withOpacity(0.2),
             ),
           ),
           Positioned(
@@ -44,7 +103,7 @@ class _SignUpPageState extends State<SignUpPage> {
             right: -100,
             child: CircleAvatar(
               radius: 150,
-              backgroundColor: Color(0xFFA673E5), // Light purple color
+              backgroundColor: Colors.tealAccent.withOpacity(0.6),
             ),
           ),
           Positioned(
@@ -52,7 +111,7 @@ class _SignUpPageState extends State<SignUpPage> {
             left: -50,
             child: CircleAvatar(
               radius: 80,
-              backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+              backgroundColor: Colors.tealAccent.withOpacity(0.2),
             ),
           ),
           Center(
@@ -76,8 +135,23 @@ class _SignUpPageState extends State<SignUpPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset('assets/logo.png', height: 120.0),
-                      SizedBox(height: 40.0),
+                      GestureDetector(
+                        onTap: () {
+                          _selectImage();
+                        },
+                        child: CircleAvatar(
+                          radius: 50,
+                          backgroundColor: Colors.grey[200],
+                          backgroundImage: _imageFile != null
+                              ? FileImage(_imageFile!)
+                              : null,
+                          child: _imageFile == null
+                              ? Icon(Icons.add_a_photo, size: 30.0,
+                              color: Colors.black54)
+                              : null,
+                        ),
+                      ),
+                      SizedBox(height: 20.0),
                       if (_errorMessage.isNotEmpty)
                         Text(
                           _errorMessage,
@@ -98,7 +172,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           fillColor: Colors.white,
                           prefixIcon: Icon(
                             Icons.email,
-                            color: Color(0xFFA673E5), // Light purple color
+                            color: Colors.tealAccent.withOpacity(0.8),
                           ),
                         ),
                         validator: (value) {
@@ -126,7 +200,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           fillColor: Colors.white,
                           prefixIcon: Icon(
                             Icons.lock,
-                            color: Color(0xFFA673E5), // Light purple color
+                            color: Colors.tealAccent.withOpacity(0.8),
                           ),
                         ),
                         validator: (value) {
@@ -142,17 +216,160 @@ class _SignUpPageState extends State<SignUpPage> {
                         },
                       ),
                       SizedBox(height: 20.0),
+                      TextFormField(
+                        controller: _nameController,
+                        decoration: InputDecoration(
+                          labelText: 'Name',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: Icon(
+                            Icons.person,
+                            color: Colors.tealAccent.withOpacity(0.8),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your name';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            signUpModel.name = value;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 20.0),
+                      TextFormField(
+                        controller: _phoneNoController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: Icon(
+                            Icons.phone,
+                            color: Colors.tealAccent.withOpacity(0.8),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your phone number';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            signUpModel.phoneNo = value;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 20.0),
+                      TextFormField(
+                        controller: _addressController,
+                        decoration: InputDecoration(
+                          labelText: 'Address',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: Icon(
+                            Icons.home,
+                            color: Colors.tealAccent.withOpacity(0.8),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your address';
+                          }
+                          return null;
+                        },
+                        onChanged: (value) {
+                          setState(() {
+                            signUpModel.address = value;
+                          });
+                        },
+                      ),
+                      SizedBox(height: 20.0),
+                      GestureDetector(
+                        onTap: () {
+                          _selectBirthDate();
+                        },
+                        child: AbsorbPointer(
+                          child: TextFormField(
+                            controller: _birthDateController,
+                            decoration: InputDecoration(
+                              labelText: 'Birth Date',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              prefixIcon: Icon(
+                                Icons.calendar_today,
+                                color: Colors.tealAccent.withOpacity(0.8),
+                              ),
+                            ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your birth date';
+                              }
+                              return null;
+                            },
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 20.0),
+                      DropdownButtonFormField<String>(
+                        value: _selectedGender,
+                        decoration: InputDecoration(
+                          labelText: 'Gender',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                          ),
+                          filled: true,
+                          fillColor: Colors.white,
+                          prefixIcon: Icon(
+                            Icons.wc,
+                            color: Colors.tealAccent.withOpacity(0.8),
+                          ),
+                        ),
+                        items: ['Male', 'Female'].map((String gender) {
+                          return DropdownMenuItem<String>(
+                            value: gender,
+                            child: Text(gender),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedGender = newValue;
+                            signUpModel.gender = newValue!;
+                          });
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select your gender';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20.0),
                       ElevatedButton(
                         onPressed: () async {
                           if (_formKey.currentState!.validate()) {
                             bool success = await signUpModel.signUp();
                             if (success) {
                               setState(() {
-                                _errorMessage = ''; // Clear any previous error message
+                                _errorMessage = '';
                               });
-                              // Navigate back to login page
                               Navigator.pop(context);
-                              // Show success message
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text('Sign up successful!'),
@@ -166,9 +383,16 @@ class _SignUpPageState extends State<SignUpPage> {
                             }
                           }
                         },
-                        child: Text('Sign Up'),
+                        child: Text(
+                          'Sign Up',
+                          style: TextStyle(
+                            color: Colors.white, // Change text color here
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFFA673E5), // Light purple color
+                          backgroundColor: Colors.tealAccent.withOpacity(0.8),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10.0),
                           ),

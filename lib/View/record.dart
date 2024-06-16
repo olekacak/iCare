@@ -78,6 +78,7 @@ class _RecordPageState extends State<RecordPage> {
                     style: TextStyle(
                       fontSize: 20.0,
                       fontWeight: FontWeight.bold,
+                      color: Colors.black, // Text color
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -118,7 +119,8 @@ class _RecordPageState extends State<RecordPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Sensor Data Records'),
+        title: null,
+        backgroundColor: Colors.transparent,
         actions: [
           IconButton(
             icon: Icon(Icons.history),
@@ -126,33 +128,81 @@ class _RecordPageState extends State<RecordPage> {
           ),
         ],
       ),
-      body: _fallRecords.isEmpty
-          ? Center(child: CircularProgressIndicator())
-          : ListView.builder(
-        itemCount: _fallRecords.length,
-        itemBuilder: (context, index) {
-          final record = _fallRecords[index];
-          return Card(
-            elevation: 3.0,
-            margin: EdgeInsets.symmetric(
-              vertical: 8.0,
-              horizontal: 16.0,
-            ),
-            child: ListTile(
-              title: Text(
-                'Date: ${record.date}',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                'Fall Detected: ${record.fall ?? false ? 'Yes' : 'No'}',
-              ),
-              trailing: Icon(
-                record.fall ?? false ? Icons.error : Icons.check_circle,
-                color: record.fall ?? false ? Colors.red : Colors.green,
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.blueGrey[800]!, Colors.tealAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
             ),
-          );
-        },
+          ),
+          Positioned(
+            top: -50,
+            left: -50,
+            child: CircleAvatar(
+              radius: 100,
+              backgroundColor: Colors.tealAccent.withOpacity(0.3), // Light purple color with opacity
+            ),
+          ),
+          Positioned(
+            top: 150,
+            right: -100,
+            child: CircleAvatar(
+              radius: 150,
+              backgroundColor: Colors.tealAccent.withOpacity(0.3), // Light purple color with opacity
+            ),
+          ),
+          Positioned(
+            bottom: -50,
+            left: -50,
+            child: CircleAvatar(
+              radius: 80,
+              backgroundColor: Colors.tealAccent.withOpacity(0.3), // Light purple color with opacity
+            ),
+          ),
+          _fallRecords.isEmpty
+              ? Center(
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA673E5)),
+            ),
+          )
+              : ListView.builder(
+            itemCount: _fallRecords.length,
+            itemBuilder: (context, index) {
+              final record = _fallRecords[index];
+              return Card(
+                elevation: 3.0,
+                margin: EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 16.0,
+                ),
+                child: ListTile(
+                  title: Text(
+                    'Date: ${record.date}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black, // Text color
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Fall Detected: ${record.fall ?? false ? 'Yes' : 'No'}',
+                    style: TextStyle(
+                      color: Colors.black87, // Text color
+                    ),
+                  ),
+                  trailing: Icon(
+                    record.fall ?? false ? Icons.error : Icons.check_circle,
+                    color: record.fall ?? false ? Colors.red : Colors.green,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:icare/View/home.dart';
-import 'package:icare/View/signup.dart';
+import '../View/home.dart';
+import '../View/signup.dart';
+import '../Model/login_model.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -17,7 +17,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5), // Light grey background color
+      backgroundColor: Colors.blueGrey[800]!, // Dark background color
       body: Stack(
         children: [
           Positioned(
@@ -25,7 +25,7 @@ class _LoginPageState extends State<LoginPage> {
             left: -50,
             child: CircleAvatar(
               radius: 100,
-              backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+              backgroundColor: Colors.tealAccent.withOpacity(0.5), // Teal accent color with opacity
             ),
           ),
           Positioned(
@@ -33,7 +33,7 @@ class _LoginPageState extends State<LoginPage> {
             right: -100,
             child: CircleAvatar(
               radius: 150,
-              backgroundColor: Color(0xFFA673E5), // Light purple color
+              backgroundColor: Colors.tealAccent.withOpacity(0.4), // Teal accent color
             ),
           ),
           Positioned(
@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
             left: -50,
             child: CircleAvatar(
               radius: 80,
-              backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+              backgroundColor: Colors.tealAccent.withOpacity(0.6), // Teal accent color with opacity
             ),
           ),
           Center(
@@ -50,7 +50,7 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset('assets/logo.png', height: 120.0), // Replaced the text with the logo
+                  Image.asset('assets/logo2.png', height: 120.0), // Replace with your logo
                   SizedBox(height: 40.0),
                   if (_errorMessage != null) // Display error message if not null
                     Text(
@@ -81,12 +81,16 @@ class _LoginPageState extends State<LoginPage> {
                           TextFormField(
                             controller: _emailController,
                             decoration: InputDecoration(
-                              labelText: 'Username',
+                              labelText: 'Email',
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
                               filled: true,
                               fillColor: Colors.white,
+                              prefixIcon: Icon(
+                                Icons.email,
+                                color: Colors.tealAccent, // Teal accent color
+                              ),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -106,6 +110,10 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               filled: true,
                               fillColor: Colors.white,
+                              prefixIcon: Icon(
+                                Icons.lock,
+                                color: Colors.tealAccent, // Teal accent color
+                              ),
                             ),
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -122,29 +130,36 @@ class _LoginPageState extends State<LoginPage> {
                                 String password = _passwordController.text;
 
                                 try {
-                                  final UserCredential userCredential =
-                                  await FirebaseAuth.instance
-                                      .signInWithEmailAndPassword(
-                                    email: email,
-                                    password: password,
-                                  );
-                                  _emailController.clear();
-                                  _passwordController.clear();
-                                  // Navigate to Home page after successful login
-                                  Navigator.pushReplacement(
-                                    context,
-                                    MaterialPageRoute(builder: (context) => HomePage()),
-                                  );
-                                } on FirebaseAuthException catch (e) {
+                                  LoginModel loginModel = LoginModel(email: email, password: password);
+                                  bool loggedIn = await loginModel.login();
+                                  if (loggedIn) {
+                                    _emailController.clear();
+                                    _passwordController.clear();
+                                    // Navigate to Home page after successful login
+                                    Navigator.pushReplacement(
+                                      context,
+                                      MaterialPageRoute(builder: (context) => HomePage()),
+                                    );
+                                  } else {
+                                    setState(() {
+                                      _errorMessage = 'Invalid email or password';
+                                    });
+                                  }
+                                } catch (e) {
                                   setState(() {
-                                    _errorMessage = 'Invalid email or password';
+                                    _errorMessage = 'Failed to login. Please try again later.';
                                   });
                                 }
                               }
                             },
-                            child: Text('Login'),
+                            child: Text(
+                              'Login',
+                              style: TextStyle(
+                                color: Colors.blueGrey[800]!, // Dark background color
+                              ),
+                            ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFFA673E5), // Light purple color
+                              backgroundColor: Colors.tealAccent, // Teal accent color
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
@@ -164,7 +179,7 @@ class _LoginPageState extends State<LoginPage> {
                     },
                     child: Text(
                       'Don\'t have an account? Sign up',
-                      style: TextStyle(color: Color(0xFFA673E5)), // Light purple color
+                      style: TextStyle(color: Colors.tealAccent), // Teal accent color
                     ),
                   ),
                 ],

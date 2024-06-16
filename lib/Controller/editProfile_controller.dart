@@ -1,7 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class LoginController {
+class EditProfileController {
+
   final String baseUrl = 'http://192.168.0.122:3000';
   String path;
   http.Response? _res;
@@ -9,7 +10,7 @@ class LoginController {
   final Map<String, String> _headers = {};
   dynamic _resultData;
 
-  LoginController({required this.path});
+  EditProfileController({required this.path});
 
   setBody(Map<String, dynamic> data) {
     _body.clear();
@@ -19,6 +20,23 @@ class LoginController {
 
   Future<void> post() async {
     _res = await http.post(
+      Uri.parse(baseUrl + path),
+      headers: _headers,
+      body: jsonEncode(_body),
+    );
+    _parseResult();
+  }
+
+  Future<void> get() async {
+    _res = await http.get(
+      Uri.parse(baseUrl + path),
+      headers: _headers,
+    );
+    _parseResult();
+  }
+
+  Future<void> put() async {
+    _res = await http.put(
       Uri.parse(baseUrl + path),
       headers: _headers,
       body: jsonEncode(_body),

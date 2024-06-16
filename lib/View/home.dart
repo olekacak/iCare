@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:icare/View/camera.dart';
 import 'package:icare/View/dashboard.dart';
 import 'package:icare/View/record.dart';
 
@@ -8,61 +9,56 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedIndex = 0;
+  final List<String> _tabTitles = ['Home', 'Record', 'Camera', 'Dashboard'];
+  int _currentIndex = 0;
 
   final List<Widget> _pages = [
     HomeContent(),
     RecordPage(),
-    Center(child: Text('Tracker Page')), // Placeholder for Tracker
+    CameraPage(),
     DashboardPage(),
   ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: _pages[_selectedIndex],
+      appBar: AppBar(
+        title: null, // Remove the title from app bar
+        backgroundColor: Colors.transparent, // Make the AppBar transparent
+        elevation: 0, // Remove the AppBar shadow
+      ),
+      extendBodyBehindAppBar: true,
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (int index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        items: [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: _onItemTapped,
-              backgroundColor: Color(0xFFA673E5), // Light purple color
-              selectedItemColor: Color(0xFFA673E5), // Light purple color for selected item
-              unselectedItemColor: Colors.grey[300], // Light grey color for unselected items
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.track_changes),
-                  label: 'Record', // Changed label from 'Fall Function' to 'Record'
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.track_changes),
-                  label: 'Tracker',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard),
-                  label: 'Dashboard',
-                ),
-              ],
-            ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.track_changes),
+            label: 'Record',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.camera),
+            label: 'Camera',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
           ),
         ],
+        selectedItemColor: Colors.tealAccent,
+        unselectedItemColor: Colors.grey,
+        backgroundColor: Colors.blueGrey[800],
       ),
+      extendBody: true,
     );
   }
 }
@@ -75,7 +71,7 @@ class HomeContent extends StatelessWidget {
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.white, Colors.pinkAccent[100]!],
+              colors: [Colors.blueGrey[800]!, Colors.tealAccent],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -86,7 +82,7 @@ class HomeContent extends StatelessWidget {
           left: -50,
           child: CircleAvatar(
             radius: 100,
-            backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+            backgroundColor: Colors.tealAccent.withOpacity(0.3),
           ),
         ),
         Positioned(
@@ -94,7 +90,7 @@ class HomeContent extends StatelessWidget {
           right: -30,
           child: CircleAvatar(
             radius: 80,
-            backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+            backgroundColor: Colors.tealAccent.withOpacity(0.3),
           ),
         ),
         Positioned(
@@ -102,38 +98,38 @@ class HomeContent extends StatelessWidget {
           left: -50,
           child: CircleAvatar(
             radius: 100,
-            backgroundColor: Color(0xFFA673E5).withOpacity(0.5), // Light purple color
+            backgroundColor: Colors.tealAccent.withOpacity(0.3),
           ),
         ),
         Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const CircleAvatar(
+              CircleAvatar(
                 radius: 50,
-                backgroundImage: AssetImage('assets/ali.jpg'), // Replace with actual image
+                backgroundImage: AssetImage('assets/ali.jpg'),
               ),
-              const SizedBox(height: 20),
-              const Text(
+              SizedBox(height: 20),
+              Text(
                 'Hello, Ali Imran',
                 style: TextStyle(
                   fontSize: 24.0,
-                  color: Color(0xFF6A0DAD), // Darker purple for text
+                  color: Colors.white,
                 ),
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
+                children: [
                   Icon(
                     Icons.location_pin,
-                    color: Color(0xFF6A0DAD), // Darker purple for icon
+                    color: Colors.white,
                   ),
                   SizedBox(width: 5),
                   Text(
                     'Senggarang, Batu Pahat',
                     style: TextStyle(
-                      color: Color(0xFF6A0DAD), // Darker purple for text
+                      color: Colors.white,
                       fontSize: 16,
                     ),
                   ),
