@@ -4,7 +4,7 @@ import 'dart:convert';
 import '../Model/record_model.dart';
 
 class RecordController {
-  final String baseUrl = 'http://10.131.74.89:3000';
+  final String baseUrl = 'http://192.168.0.122:3000';
 
   Future<Map<String, dynamic>?> fetchSensorData() async {
     try {
@@ -24,7 +24,7 @@ class RecordController {
   Future<void> sendFallData(RecordModel record) async {
     try {
       final response = await http.post(
-        Uri.parse('http://10.131.74.89:3000/sensor/store'),  // Ensure this matches your server's route
+        Uri.parse('$baseUrl/sensor/store'),  // Ensure this matches your server's route
         headers: {'Content-Type': 'application/json'},
         body: json.encode(record.toJson()),
       );
