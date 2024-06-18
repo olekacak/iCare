@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:icare/View/record.dart';
+import 'package:icare/View/google_map.dart';
 import 'dart:async';
 
 import '../Controller/record_controller.dart';
@@ -129,24 +129,31 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       HomeContent(fallRecords: _fallRecords),
-      RecordPage(),
+      GoogleMapPage(),
       CameraPage(),
       DashboardPage(),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Home'),
+        title: null, // Removed title from AppBar
         backgroundColor: Colors.transparent,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.history),
-            onPressed: () => _showFallRecords(context),
-          ),
-        ],
       ),
       extendBodyBehindAppBar: true,
-      body: _pages[_currentIndex],
+      body: Stack(
+        children: [
+          _pages[_currentIndex],
+          if (_currentIndex == 0) // Only show icon on HomeContent page
+            Positioned(
+              top: 16.0,
+              right: 16.0,
+              child: IconButton(
+                icon: Icon(Icons.history),
+                onPressed: () => _showFallRecords(context),
+              ), 
+            ),
+        ],
+      ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         onTap: (int index) {
@@ -160,8 +167,8 @@ class _HomePageState extends State<HomePage> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.track_changes),
-            label: 'Record',
+            icon: Icon(Icons.map),
+            label: 'Map', // Change label to 'Map'
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.camera),

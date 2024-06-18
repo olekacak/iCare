@@ -44,6 +44,8 @@ dependencies:
   chewie: ^1.8.1
   image_picker: ^1.1.2
   shared_preferences: ^2.2.3
+  google_maps_flutter: ^2.7.0
+  permission_handler: ^9.1.0
 
 
 dev_dependencies:
