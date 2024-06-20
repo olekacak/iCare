@@ -32,6 +32,7 @@ class _SignUpPageState extends State<SignUpPage> {
     _addressController = TextEditingController();
     _birthDateController = TextEditingController();
     signUpModel = SignUpModel(
+      userId: '',
       email: '',
       password: '',
       name: '',

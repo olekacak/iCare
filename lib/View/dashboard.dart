@@ -19,7 +19,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> loadByEmail() async {
-    EditProfileModel? profile = await EditProfileModel.loadByEmail();
+    EditProfileModel? profile = await EditProfileModel.loadByUserId();
     setState(() {
       userProfile = profile;
     });

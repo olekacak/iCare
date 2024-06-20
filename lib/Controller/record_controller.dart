@@ -1,56 +1,55 @@
-import 'package:http/http.dart' as http;
+// Controller (RecordController)
 import 'dart:convert';
-
-import '../Model/record_model.dart';
+import 'package:http/http.dart' as http;
 
 class RecordController {
-  final String baseUrl = 'http://192.168.0.122:3000';
+  final String baseUrl = 'http://10.131.76.206:3000';
+  String path;
+  http.Response? _res;
+  final Map<String, dynamic> _body = {};
+  final Map<String, String> _headers = {};
+  dynamic _resultData;
 
-  Future<Map<String, dynamic>?> fetchSensorData() async {
+  RecordController({required this.path});
+
+  setBody(Map<String, dynamic> data) {
+    _body.clear();
+    _body.addAll(data);
+    _headers["Content-Type"] = "application/json; charset=UTF-8";
+  }
+
+  Future<void> post() async {
+    _res = await http.post(
+      Uri.parse(baseUrl + path),
+      headers: _headers,
+      body: jsonEncode(_body),
+    );
+    _parseResult();
+  }
+
+  Future<void> get() async {
+    _res = await http.get(
+      Uri.parse(baseUrl + path),
+      headers: _headers,
+    );
+    _parseResult();
+  }
+
+  void _parseResult() {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/sensor'));
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Failed to load sensor data');
-      }
-    } catch (e) {
-      print('Error: $e');
-      return null;
+      print("raw response: ${_res?.body}");
+      _resultData = jsonDecode(_res?.body ?? "");
+    } catch (ex) {
+      _resultData = _res?.body;
+      print("exception in http result parsing ${ex}");
     }
   }
 
-  Future<void> sendFallData(RecordModel record) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/sensor/store'),  // Ensure this matches your server's route
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(record.toJson()),
-      );
-
-      if (response.statusCode != 200) {
-        throw Exception('Failed to send fall data');
-      }
-    } catch (e) {
-      print('Error: $e');
-    }
+  dynamic result() {
+    return _resultData;
   }
 
-  Future<List<RecordModel>> fetchSensorDataFromBackend() async {
-    try {
-      final url = Uri.parse('$baseUrl/sensor/firebase');  // Adjust the endpoint to your backend's route
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final List<dynamic> jsonData = jsonDecode(response.body);
-        return jsonData.map((data) => RecordModel.fromJson(data)).toList();
-      } else {
-        throw Exception('Failed to fetch data');
-      }
-    } catch (e) {
-      print('Error: $e');
-      throw Exception('Failed to fetch data');
-    }
+  int status() {
+    return _res?.statusCode ?? 0;
   }
 }

@@ -1,24 +1,24 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
-class LoginController {
-  final String baseUrl = 'http://10.131.76.206:3000';
+class ForgotPasswordController {
+  final String baseUrl = 'http://10.131.76.206:3000'; // Replace with your backend URL
   String path;
   http.Response? _res;
   final Map<String, dynamic> _body = {};
   final Map<String, String> _headers = {};
   dynamic _resultData;
 
-  LoginController({required this.path});
+  ForgotPasswordController({required this.path});
 
-  setBody(Map<String, dynamic> data) {
+  void setBody(Map<String, dynamic> data) {
     _body.clear();
     _body.addAll(data);
     _headers["Content-Type"] = "application/json; charset=UTF-8";
   }
 
-  Future<void> post() async {
-    _res = await http.post(
+  Future<void> put() async {
+    _res = await http.put(
       Uri.parse(baseUrl + path),
       headers: _headers,
       body: jsonEncode(_body),
@@ -28,11 +28,10 @@ class LoginController {
 
   void _parseResult() {
     try {
-      print("raw response: ${_res?.body}");
       _resultData = jsonDecode(_res?.body ?? "");
     } catch (ex) {
       _resultData = _res?.body;
-      print("exception in http result parsing ${ex}");
+      print("Exception in HTTP result parsing: $ex");
     }
   }
 

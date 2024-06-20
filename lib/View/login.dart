@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../View/home.dart';
 import '../View/signup.dart';
 import '../Model/login_model.dart';
+import 'forgotPasword.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -12,7 +13,9 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _obscureText = true; // Variable to control password visibility
   String? _errorMessage; // Variable to hold the error message
+  int _failedAttempts = 0; // Counter to track failed login attempts
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                           SizedBox(height: 20.0),
                           TextFormField(
                             controller: _passwordController,
-                            obscureText: true,
+                            obscureText: _obscureText,
                             decoration: InputDecoration(
                               labelText: 'Password',
                               border: OutlineInputBorder(
@@ -113,6 +116,17 @@ class _LoginPageState extends State<LoginPage> {
                               prefixIcon: Icon(
                                 Icons.lock,
                                 color: Colors.tealAccent, // Teal accent color
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureText ? Icons.visibility : Icons.visibility_off,
+                                  color: Colors.tealAccent, // Teal accent color
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscureText = !_obscureText;
+                                  });
+                                },
                               ),
                             ),
                             validator: (value) {
@@ -135,6 +149,10 @@ class _LoginPageState extends State<LoginPage> {
                                   if (loggedIn) {
                                     _emailController.clear();
                                     _passwordController.clear();
+                                    setState(() {
+                                      _errorMessage = null;
+                                      _failedAttempts = 0; // Reset failed attempts on successful login
+                                    });
                                     // Navigate to Home page after successful login
                                     Navigator.pushReplacement(
                                       context,
@@ -143,6 +161,7 @@ class _LoginPageState extends State<LoginPage> {
                                   } else {
                                     setState(() {
                                       _errorMessage = 'Invalid email or password';
+                                      _failedAttempts++; // Increment failed attempts on failed login
                                     });
                                   }
                                 } catch (e) {
@@ -169,6 +188,19 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                   ),
+                  if (_failedAttempts >= 3) // Display "Forgot Password" button after 3 failed attempts
+                    TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ForgotPasswordPage()),
+                        );
+                      },
+                      child: Text(
+                        'Forgot Password?',
+                        style: TextStyle(color: Colors.tealAccent), // Teal accent color
+                      ),
+                    ),
                   SizedBox(height: 10.0),
                   TextButton(
                     onPressed: () {

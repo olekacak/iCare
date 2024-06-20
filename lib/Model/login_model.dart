@@ -19,16 +19,28 @@ class LoginModel {
       if (loginController.status() == 200) {
         Map<String, dynamic> result = await loginController.result();
 
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        await prefs.setString('email', email);
-        print("Email saved to SharedPreferences: $email");
+        // Ensure you're accessing userId correctly from the response
+        int? userId = result['user']['userId'];
 
-        // // Store user data in SharedPreferences
-        // await _storeUserData(result);
+        if (userId != null) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('userId', userId);
+          print("UserId saved to SharedPreferences: $userId");
+          await prefs.setString('email', email);
+          print("Email saved to SharedPreferences: $email");
 
-        return true;
+          // Store user data in SharedPreferences if needed
+          // await _storeUserData(result['user']); // Assuming you want to store user data
+
+          return true;
+        } else {
+          print("UserId not found in response");
+          return false;
+        }
+      } else {
+        print("Error: Status code ${loginController.status()}"); // Handle other status codes
+        return false;
       }
-      return false;
     } catch (e) {
       print("Error logging in: $e");
       return false;

@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 
 class EditProfileController {
 
-  final String baseUrl = 'http://192.168.0.122:3000';
+  final String baseUrl = 'http://10.131.76.206:3000';
   String path;
   http.Response? _res;
   final Map<String, dynamic> _body = {};

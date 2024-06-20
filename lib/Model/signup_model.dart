@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:icare/Controller/signup_controller.dart';
 
 class SignUpModel {
+  String userId; // New attribute
   String email;
   String password;
   String name;
@@ -13,6 +14,7 @@ class SignUpModel {
   String profileImage;
 
   SignUpModel({
+    required this.userId,
     required this.email,
     required this.password,
     required this.name,
@@ -25,6 +27,7 @@ class SignUpModel {
 
   Map<String, dynamic> toJson() {
     return {
+      'userId': userId, // Include userId in the JSON representation
       'email': email,
       'password': password,
       'name': name,
@@ -50,6 +53,8 @@ class SignUpModel {
         Map<String, dynamic>? responseData = await signUpController.result();
         if (responseData != null) {
           print('Raw JSON data: $responseData');
+          // Assuming backend returns the userId in the response
+          userId = responseData['userId'];
           return true;
         } else {
           print('Error: Response data is null');

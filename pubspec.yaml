@@ -46,6 +46,10 @@ dependencies:
   shared_preferences: ^2.2.3
   google_maps_flutter: ^2.7.0
   permission_handler: ^9.1.0
+  fl_chart: ^0.68.0
+  charts_flutter: ^0.12.0
+  syncfusion_flutter_charts: ^21.2.4
+
 
 
 dev_dependencies:

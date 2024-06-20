@@ -50,16 +50,16 @@ class EditProfileModel {
     };
   }
 
-  static Future<EditProfileModel?> loadByEmail() async {
+  static Future<EditProfileModel?> loadByUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? email = prefs.getString('email');
-    if (email == null) {
-      print("No email found in SharedPreferences");
+    int? userId = prefs.getInt('userId');
+    if (userId == null) {
+      print("No userId found in SharedPreferences");
       return null;
     }
 
     try {
-      EditProfileController editProfileController = EditProfileController(path: "/auth/user?email=$email");
+      EditProfileController editProfileController = EditProfileController(path: "/user/userId/$userId");
 
       // Perform GET request to fetch user info
       await editProfileController.get();
@@ -83,9 +83,15 @@ class EditProfileModel {
   }
 
 
+  Future<bool> updateUser() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int? userId = prefs.getInt('userId');
+    if (userId == null) {
+      print("No userId found in SharedPreferences");
+      return false;
+    }
 
-  Future<bool> updateUser(String email) async {
-    EditProfileController editProfileController = EditProfileController(path: "/auth/user/$email");
+    EditProfileController editProfileController = EditProfileController(path: "/user/$userId");
     editProfileController.setBody(toJson());
 
     print('Updating user with data: ${jsonEncode(toJson())}');
@@ -105,7 +111,6 @@ class EditProfileModel {
       return false;
     }
   }
-
 
 
 }

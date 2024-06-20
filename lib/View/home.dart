@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:icare/View/google_map.dart';
+import 'package:icare/View/google_map.dart'; // Import your other pages as needed
 import 'dart:async';
-
-import '../Controller/record_controller.dart';
 import '../Model/record_model.dart';
 import 'camera.dart';
 import 'dashboard.dart';
@@ -13,17 +11,14 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late RecordController _recordController;
-  late List<RecordModel> _fallRecords;
+  late RecordModel _latestFallRecord;
   Timer? _timer;
-  String? _lastFetchedDataString;
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _recordController = RecordController();
-    _fallRecords = [];
+    _latestFallRecord = RecordModel(); // Initialize with a dummy or default instance
     _startTimer();
   }
 
@@ -35,92 +30,63 @@ class _HomePageState extends State<HomePage> {
 
   void _startTimer() {
     _timer = Timer.periodic(Duration(seconds: 5), (timer) {
-      fetchSensorData();
+      fetchLatestFall(); // Fetch initially
+      // Do not cancel the timer here; it will be canceled after the initial fetch in fetchLatestFall()
     });
   }
 
-  Future<void> fetchSensorData() async {
-    final newData = await _recordController.fetchSensorData();
-    if (newData != null) {
-      final newDataString = '${newData['date']}${newData['fall']}';
-      if (newDataString != _lastFetchedDataString &&
-          newData['date'] != null &&
-          newData['fall'] != null) {
-        final record = RecordModel.fromJson(newData);
-        setState(() {
-          _fallRecords.insert(0, record); // Add new record at the beginning
-          _lastFetchedDataString = newDataString;
-        });
-        await _recordController.sendFallData(record); // Send data to backend
+  Future<void> fetchLatestFall() async {
+    try {
+      RecordModel? newData = await RecordModel.getFallLatest();
+      if (newData != null) {
+        // Compare newData with _latestFallRecord before updating
+        if (newData.date != _latestFallRecord.date ||
+            newData.time != _latestFallRecord.time ||
+            newData.fall != _latestFallRecord.fall) {
+          setState(() {
+            _latestFallRecord = newData; // Update the latest fall record
+          });
+          // Post updated record to backend
+          bool success = await _latestFallRecord.postFall();
+          if (success) {
+            print('Successfully sent updated fall record to backend');
+          } else {
+            print('Failed to send updated fall record to backend');
+          }
+        }
       }
+    } catch (e) {
+      print('Error fetching latest fall data: $e');
+      // Handle error as per your application's requirement
     }
   }
 
-  void _showFallRecords(BuildContext context) async {
+  Future<void> getAllFallRecords() async {
     try {
-      List<RecordModel> historicalRecords =
-      await _recordController.fetchSensorDataFromBackend();
+      List<RecordModel> allFallRecords = await RecordModel.getAllFall();
 
+      // Show modal bottom sheet with the list of fall records
       showModalBottomSheet(
         context: context,
         builder: (BuildContext context) {
-          return Container(
-            padding: EdgeInsets.symmetric(vertical: 20.0, horizontal: 20.0),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20.0),
-                topRight: Radius.circular(20.0),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Historical Fall Records',
-                  style: TextStyle(
-                    fontSize: 20.0,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black, // Text color
-                  ),
-                  textAlign: TextAlign.center,
+          return ListView.builder(
+            itemCount: allFallRecords.length,
+            itemBuilder: (context, index) {
+              RecordModel record = allFallRecords[index];
+              return ListTile(
+                title: Text('Date: ${record.date}'),
+                subtitle: Text('Time: ${record.time}'),
+                trailing: Icon(
+                  record.fall ?? false ? Icons.error : Icons.check_circle,
+                  color: record.fall ?? false ? Colors.red : Colors.green,
                 ),
-                SizedBox(height: 20.0),
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: historicalRecords.length,
-                    itemBuilder: (context, index) {
-                      final record = historicalRecords[index];
-                      return Card(
-                        elevation: 3.0,
-                        margin: EdgeInsets.symmetric(
-                          vertical: 8.0,
-                          horizontal: 16.0,
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            'Date: ${record.date}',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'Fall Detected: ${record.fall ?? false ? 'Yes' : 'No'}',
-                          ),
-                          trailing: Icon(
-                            record.fall ?? false ? Icons.error : Icons.check_circle,
-                            color: record.fall ?? false ? Colors.red : Colors.green,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
+              );
+            },
           );
         },
       );
     } catch (e) {
-      print('Error fetching historical sensor data: $e');
+      print('Error fetching all fall records: $e');
       // Handle error as per your application's requirement
     }
   }
@@ -128,31 +94,31 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
-      HomeContent(fallRecords: _fallRecords),
-      GoogleMapPage(),
+      _buildHomeContent(),
+      GoogleMapPage(), // Replace with your actual pages
       CameraPage(),
       DashboardPage(),
     ];
 
+    final List<String> _titles = [
+      'Home',
+      'Map',
+      'Camera',
+      'Dashboard',
+    ];
+
     return Scaffold(
       appBar: AppBar(
-        title: null, // Removed title from AppBar
-        backgroundColor: Colors.transparent,
+        title: Text(
+          _titles[_currentIndex],
+          style: TextStyle(
+            color: Colors.white, // Set the text color if needed
+          ),
+        ),
+        backgroundColor: Colors.tealAccent, // Set the desired background color here
       ),
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          _pages[_currentIndex],
-          if (_currentIndex == 0) // Only show icon on HomeContent page
-            Positioned(
-              top: 16.0,
-              right: 16.0,
-              child: IconButton(
-                icon: Icon(Icons.history),
-                onPressed: () => _showFallRecords(context),
-              ), 
-            ),
-        ],
+      body: Center(
+        child: _pages[_currentIndex],
       ),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -185,15 +151,8 @@ class _HomePageState extends State<HomePage> {
       ),
     );
   }
-}
 
-class HomeContent extends StatelessWidget {
-  final List<RecordModel> fallRecords;
-
-  HomeContent({required this.fallRecords});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHomeContent() {
     return Stack(
       children: [
         Container(
@@ -229,17 +188,27 @@ class HomeContent extends StatelessWidget {
             backgroundColor: Colors.tealAccent.withOpacity(0.3),
           ),
         ),
-        fallRecords.isEmpty
-            ? Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA673E5)),
+        Positioned(
+          top: 16.0,
+          right: 16.0,
+          child: IconButton(
+            icon: Icon(Icons.history),
+            onPressed: () => getAllFallRecords(),
           ),
-        )
-            : ListView.builder(
-          itemCount: fallRecords.length,
-          itemBuilder: (context, index) {
-            final record = fallRecords[index];
-            return Card(
+        ),
+        _latestFallRecord.date != null && _latestFallRecord.fall != null
+            ? Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Latest Fall Record',
+              style: TextStyle(
+                fontSize: 20.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 20.0),
+            Card(
               elevation: 3.0,
               margin: EdgeInsets.symmetric(
                 vertical: 8.0,
@@ -247,25 +216,34 @@ class HomeContent extends StatelessWidget {
               ),
               child: ListTile(
                 title: Text(
-                  'Date: ${record.date}',
+                  'Date: ${_latestFallRecord.date}',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
                   ),
                 ),
                 subtitle: Text(
-                  'Fall Detected: ${record.fall ?? false ? 'Yes' : 'No'}',
+                  'Time: ${_latestFallRecord.time}',
                   style: TextStyle(
                     color: Colors.black87,
                   ),
                 ),
                 trailing: Icon(
-                  record.fall ?? false ? Icons.error : Icons.check_circle,
-                  color: record.fall ?? false ? Colors.red : Colors.green,
+                  _latestFallRecord.fall ?? false
+                      ? Icons.error
+                      : Icons.check_circle,
+                  color: _latestFallRecord.fall ?? false
+                      ? Colors.red
+                      : Colors.green,
                 ),
               ),
-            );
-          },
+            ),
+          ],
+        )
+            : Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA673E5)),
+          ),
         ),
       ],
     );

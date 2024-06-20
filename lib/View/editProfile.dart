@@ -4,7 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:icare/Model/editProfile_model.dart'; // Replace with actual path
+import '../Model/editProfile_model.dart'; // Replace with actual path
 
 class EditProfilePage extends StatefulWidget {
   final EditProfileModel editProfile;
@@ -26,22 +26,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _genderController;
   Uint8List? _decodedImage;
   final ImagePicker _picker = ImagePicker();
+  bool _obscureText = true; // Variable to control password visibility
 
   @override
   void initState() {
     super.initState();
     _emailController = TextEditingController(text: widget.editProfile.email);
-    _passwordController =
-        TextEditingController(text: widget.editProfile.password);
+    _passwordController = TextEditingController(text: widget.editProfile.password);
     _nameController = TextEditingController(text: widget.editProfile.name);
-    _phoneNoController =
-        TextEditingController(text: widget.editProfile.phoneNo);
-    _addressController =
-        TextEditingController(text: widget.editProfile.address);
-    _birthDateController =
-        TextEditingController(text: widget.editProfile.birthDate);
-    _genderController =
-        TextEditingController(text: widget.editProfile.gender);
+    _phoneNoController = TextEditingController(text: widget.editProfile.phoneNo);
+    _addressController = TextEditingController(text: widget.editProfile.address);
+    _birthDateController = TextEditingController(text: widget.editProfile.birthDate);
+    _genderController = TextEditingController(text: widget.editProfile.gender);
 
     if (widget.editProfile.profileImage.isNotEmpty) {
       _decodedImage = base64Decode(widget.editProfile.profileImage);
@@ -68,7 +64,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         profileImage: profileImageBase64,
       );
 
-      final success = await updatedProfile.updateUser(email);
+      final success = await updatedProfile.updateUser();
 
       if (success) {
         Navigator.pop(context);
@@ -81,8 +77,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _pickImage() async {
-    final pickedFile =
-    await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
 
     if (pickedFile != null) {
       setState(() {
@@ -136,7 +131,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   SizedBox(height: 20),
                   TextFormField(
                     controller: _emailController,
-                    decoration: InputDecoration(labelText: 'Email'),
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
@@ -144,10 +146,29 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 20),
                   TextFormField(
                     controller: _passwordController,
-                    decoration: InputDecoration(labelText: 'Password'),
-                    obscureText: true,
+                    obscureText: _obscureText,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureText ? Icons.visibility : Icons.visibility_off,
+                          color: Colors.tealAccent,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureText = !_obscureText;
+                          });
+                        },
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your password';
@@ -155,9 +176,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 20),
                   TextFormField(
                     controller: _nameController,
-                    decoration: InputDecoration(labelText: 'Name'),
+                    decoration: InputDecoration(
+                      labelText: 'Name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your name';
@@ -165,9 +194,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 20),
                   TextFormField(
                     controller: _phoneNoController,
-                    decoration: InputDecoration(labelText: 'Phone Number'),
+                    decoration: InputDecoration(
+                      labelText: 'Phone Number',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your phone number';
@@ -175,9 +212,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 20),
                   TextFormField(
                     controller: _addressController,
-                    decoration: InputDecoration(labelText: 'Address'),
+                    decoration: InputDecoration(
+                      labelText: 'Address',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your address';
@@ -185,9 +230,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 20),
                   TextFormField(
                     controller: _birthDateController,
-                    decoration: InputDecoration(labelText: 'Birth Date'),
+                    decoration: InputDecoration(
+                      labelText: 'Birth Date',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your birth date';
@@ -195,9 +248,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       return null;
                     },
                   ),
+                  SizedBox(height: 20),
                   TextFormField(
                     controller: _genderController,
-                    decoration: InputDecoration(labelText: 'Gender'),
+                    decoration: InputDecoration(
+                      labelText: 'Gender',
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your gender';
@@ -207,15 +268,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   ),
                   SizedBox(height: 20),
                   ElevatedButton(
-                    onPressed: _updateUserProfile, // Replace with your update function
+                    onPressed: _updateUserProfile,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.tealAccent, // Background color
+                      backgroundColor: Colors.tealAccent,
                       padding: EdgeInsets.symmetric(horizontal: 20),
                     ),
                     child: Text(
                       'Save',
                       style: TextStyle(
-                        color: Colors.white, // Text color
+                        color: Colors.white,
                       ),
                     ),
                   ),
