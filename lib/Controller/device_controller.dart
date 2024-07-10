@@ -1,16 +1,16 @@
+// Controller (SignUpController)
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-class EditProfileController {
-
+class DeviceController {
   String path;
   http.Response? _res;
   final Map<String, dynamic> _body = {};
   final Map<String, String> _headers = {};
   dynamic _resultData;
 
-  EditProfileController({required this.path});
+  DeviceController({required this.path});
 
   setBody(Map<String, dynamic> data) {
     _body.clear();
@@ -38,16 +38,6 @@ class EditProfileController {
     _res = await http.get(
       Uri.parse(baseUrl + path),
       headers: _headers,
-    );
-    _parseResult();
-  }
-
-  Future<void> put() async {
-    String baseUrl = await getBaseUrl();
-    _res = await http.put(
-      Uri.parse(baseUrl + path),
-      headers: _headers,
-      body: jsonEncode(_body),
     );
     _parseResult();
   }

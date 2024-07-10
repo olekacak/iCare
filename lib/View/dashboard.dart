@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // Import SharedPreferences
 import 'package:icare/Model/editProfile_model.dart';
 import 'editProfile.dart';
 import 'login.dart';
+import 'package:icare/Model/device_model.dart'; // Import your DeviceModel class
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -11,17 +13,29 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   EditProfileModel? userProfile;
+  List<DeviceModel> devices = [];
 
   @override
   void initState() {
     super.initState();
+    print('DashboardPage initState called'); // Debugging print statement
     loadByEmail();
+    loadDevices();
   }
 
   Future<void> loadByEmail() async {
     EditProfileModel? profile = await EditProfileModel.loadByUserId();
     setState(() {
       userProfile = profile;
+    });
+  }
+
+  Future<void> loadDevices() async {
+    print('loadDevices called'); // Debugging print statement
+    List<DeviceModel> loadedDevices = await DeviceModel.getDevice();
+    print('Devices loaded: ${loadedDevices.length}'); // Debugging print statement
+    setState(() {
+      devices = loadedDevices;
     });
   }
 
@@ -42,6 +56,176 @@ class _DashboardPageState extends State<DashboardPage> {
         loadByEmail(); // Refresh profile data after editing
       });
     }
+  }
+
+  void _showDevicesDialog(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int userId = prefs.getInt('userId') ?? 0; // Retrieve userId from SharedPreferences as int
+
+    List<DeviceModel> devices = await DeviceModel.getDevice(); // Fetch devices
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Manage Devices'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Connected Devices:'),
+                if (devices.isEmpty)
+                  Text('No devices connected.'),
+                for (var device in devices)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ID: ${device.id}',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ListTile(
+                        title: Text(device.name),
+                        subtitle:
+                        Text('Age: ${device.age}, Relationship: ${device.relationship}'),
+                        onTap: () {
+                          // Handle device selection if needed
+                          Navigator.pop(context); // Close the dialog
+                        },
+                      ),
+                      Divider(), // Add a divider between devices
+                    ],
+                  ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+              },
+              child: Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                _showAddDeviceDialog(context, userId); // Open add device dialog
+              },
+              child: Text('Add Device'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+
+  void _showAddDeviceDialog(BuildContext context, int userId) {
+    TextEditingController nameController = TextEditingController();
+    TextEditingController ageController = TextEditingController();
+    TextEditingController relationshipController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Add Device'),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: 'Device Name'),
+                ),
+                TextFormField(
+                  controller: ageController,
+                  decoration: InputDecoration(labelText: 'Device Age'),
+                  keyboardType: TextInputType.number,
+                ),
+                TextFormField(
+                  controller: relationshipController,
+                  decoration: InputDecoration(labelText: 'Relationship'),
+                ),
+              ],
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Close the dialog
+                _showDevicesDialog(context); // Reopen the manage devices dialog
+              },
+              child: Text('Close'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                String name = nameController.text.trim();
+                int age = int.tryParse(ageController.text.trim()) ?? 0;
+                String relationship = relationshipController.text.trim();
+
+                if (name.isEmpty || age <= 0 || relationship.isEmpty) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('Invalid Input'),
+                      content: Text('Please enter valid details for all fields.'),
+                      actions: <Widget>[
+                        TextButton(
+                          child: Text('OK'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                  );
+                  return;
+                }
+
+                DeviceModel newDevice = DeviceModel(
+                  id: '',
+                  deviceId: '48:3f:da:09:0a:c1', // This will be set by the backend
+                  name: name,
+                  age: age,
+                  relationship: relationship,
+                  userId: userId, // Assign userId retrieved from SharedPreferences as int
+                );
+
+                bool added = await newDevice.addDevice();
+                if (added) {
+                  // Refresh device list after adding
+                  await loadDevices();
+                  Navigator.pop(context); // Close the dialog
+                  _showDevicesDialog(context); // Show devices dialog again to reflect changes
+
+                  // Show success message
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Device added successfully!'),
+                      duration: Duration(seconds: 2), // Adjust as needed
+                    ),
+                  );
+                } else {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: Text('Failed to Add Device'),
+                      content: Text('Unable to add device at the moment. Please try again later.'),
+                      actions: <Widget>[
+                        TextButton(
+                          child: Text('OK'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+              },
+              child: Text('Add Device'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -215,7 +399,8 @@ class _DashboardPageState extends State<DashboardPage> {
                     ElevatedButton(
                       onPressed: () => _editProfile(context), // Replace with your function
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.blueGrey[800], backgroundColor: Colors.tealAccent, // Text color
+                        foregroundColor: Colors.blueGrey[800],
+                        backgroundColor: Colors.tealAccent, // Text color
                       ),
                       child: Text(
                         'Edit Profile',
@@ -226,9 +411,24 @@ class _DashboardPageState extends State<DashboardPage> {
                     ),
                     SizedBox(width: 20),
                     ElevatedButton(
+                      onPressed: () => _showDevicesDialog(context), // Replace with your function
+                      style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.blueGrey[800],
+                        backgroundColor: Colors.tealAccent, // Text color
+                      ),
+                      child: Text(
+                        'Devices',
+                        style: TextStyle(
+                          color: Colors.black, // Text color
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 20),
+                    ElevatedButton(
                       onPressed: () => _logout(context), // Replace with your logout function
                       style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.blueGrey[800], backgroundColor: Colors.tealAccent, // Text color
+                        foregroundColor: Colors.blueGrey[800],
+                        backgroundColor: Colors.tealAccent, // Text color
                         padding: EdgeInsets.symmetric(horizontal: 20),
                       ),
                       child: Text(

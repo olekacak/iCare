@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:icare/View/google_map.dart'; // Import your other pages as needed
 import 'dart:async';
+import 'package:geocoding/geocoding.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../Model/record_model.dart';
 import 'camera.dart';
 import 'dashboard.dart';
+import 'google_map.dart'; // Import your other pages as needed
 
 class HomePage extends StatefulWidget {
   @override
@@ -11,14 +13,20 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late RecordModel _latestFallRecord;
+  RecordModel _latestFallRecord = RecordModel(
+    date: '',
+    time: '',
+    fall: false,
+    deviceId: '',
+    location: '',
+  );
   Timer? _timer;
   int _currentIndex = 0;
 
   @override
   void initState() {
     super.initState();
-    _latestFallRecord = RecordModel(); // Initialize with a dummy or default instance
+    fetchLatestFall(); // Fetch initially
     _startTimer();
   }
 
@@ -30,8 +38,7 @@ class _HomePageState extends State<HomePage> {
 
   void _startTimer() {
     _timer = Timer.periodic(Duration(seconds: 5), (timer) {
-      fetchLatestFall(); // Fetch initially
-      // Do not cancel the timer here; it will be canceled after the initial fetch in fetchLatestFall()
+      fetchLatestFall(); // Fetch periodically
     });
   }
 
@@ -42,10 +49,13 @@ class _HomePageState extends State<HomePage> {
         // Compare newData with _latestFallRecord before updating
         if (newData.date != _latestFallRecord.date ||
             newData.time != _latestFallRecord.time ||
-            newData.fall != _latestFallRecord.fall) {
+            newData.fall != _latestFallRecord.fall ||
+            newData.deviceId != _latestFallRecord.deviceId ||
+            newData.location != _latestFallRecord.location) {
           setState(() {
             _latestFallRecord = newData; // Update the latest fall record
           });
+
           // Post updated record to backend
           bool success = await _latestFallRecord.postFall();
           if (success) {
@@ -57,7 +67,7 @@ class _HomePageState extends State<HomePage> {
       }
     } catch (e) {
       print('Error fetching latest fall data: $e');
-      // Handle error as per your application's requirement
+      // Optionally show a dialog or notification to the user about the error
     }
   }
 
@@ -75,11 +85,35 @@ class _HomePageState extends State<HomePage> {
               RecordModel record = allFallRecords[index];
               return ListTile(
                 title: Text('Date: ${record.date}'),
-                subtitle: Text('Time: ${record.time}'),
+                subtitle: FutureBuilder<String>(
+                  future: _getLocationString(record.location),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Text('Loading...'); // Placeholder while fetching
+                    } else if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    } else {
+                      return Text(
+                        'Time: ${record.time}\nDevice ID: ${record.deviceId}\nLocation: ${snapshot.data}',
+                        style: TextStyle(
+                          color: Colors.black87,
+                        ),
+                      );
+                    }
+                  },
+                ),
                 trailing: Icon(
                   record.fall ?? false ? Icons.error : Icons.check_circle,
                   color: record.fall ?? false ? Colors.red : Colors.green,
                 ),
+                onTap: () {
+                  // Navigate to GoogleMapPage when the record is tapped
+                  LatLng destination = LatLng(
+                    double.parse(record.location.split(',')[0].split(':')[1].trim()), // Parse latitude from location string
+                    double.parse(record.location.split(',')[1].split(':')[1].trim()), // Parse longitude from location string
+                  );
+                  _navigateToMap(destination);
+                },
               );
             },
           );
@@ -87,15 +121,66 @@ class _HomePageState extends State<HomePage> {
       );
     } catch (e) {
       print('Error fetching all fall records: $e');
-      // Handle error as per your application's requirement
+      // Optionally show a dialog or notification to the user about the error
     }
   }
+
+  Future<String> _getLocationString(dynamic location) async {
+    if (location is String) {
+      // Parse the string to extract lat and lon
+      List<String> parts = location.split(',');
+      if (parts.length == 2) {
+        try {
+          double lat = double.parse(parts[0].trim().split(':')[1]);
+          double lon = double.parse(parts[1].trim().split(':')[1]);
+          location = {'lat': lat, 'lon': lon};
+        } catch (e) {
+          print('Error parsing lat lon from string: $e');
+          return 'Error parsing lat lon from string';
+        }
+      } else {
+        return 'Invalid location format';
+      }
+    }
+
+    if (location is Map<String, dynamic>) {
+      double lat = location['lat'];
+      double lon = location['lon'];
+
+      try {
+        List<Placemark> placemarks = await placemarkFromCoordinates(lat, lon);
+        if (placemarks != null && placemarks.isNotEmpty) {
+          Placemark placemark = placemarks[0];
+          String address = '${placemark.name ?? ''}, '
+              '${placemark.subLocality ?? ''}, '
+              '${placemark.locality ?? ''}, '
+              '${placemark.postalCode ?? ''}, '
+              '${placemark.country ?? ''}';
+          return address.trim();
+        } else {
+          return 'No address found'; // Handle no results case
+        }
+      } catch (e) {
+        print('Error getting location from coordinates: $e');
+        return 'Error fetching address'; // Handle geocoding error
+      }
+    }
+
+    return 'Unknown location'; // Handle unexpected cases
+  }
+
+  void _navigateToMap(LatLng destination) {
+    setState(() {
+      _currentIndex = 1; // Index 1 corresponds to the map tab in your BottomNavigationBar
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       _buildHomeContent(),
-      GoogleMapPage(), // Replace with your actual pages
+      GoogleMapPage(),
       CameraPage(),
       DashboardPage(),
     ];
@@ -197,52 +282,73 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         _latestFallRecord.date != null && _latestFallRecord.fall != null
-            ? Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Latest Fall Record',
-              style: TextStyle(
-                fontSize: 20.0,
-                fontWeight: FontWeight.bold,
+            ? GestureDetector(
+          onTap: () {
+            // Navigate to GoogleMapPage when the latest fall record is tapped
+            LatLng destination = LatLng(
+              double.parse(_latestFallRecord.location.split(',')[0].split(':')[1].trim()), // Parse latitude from location string
+              double.parse(_latestFallRecord.location.split(',')[1].split(':')[1].trim()), // Parse longitude from location string
+            );
+            _navigateToMap(destination);
+          },
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Latest Fall Record',
+                style: TextStyle(
+                  fontSize: 20.0,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-            SizedBox(height: 20.0),
-            Card(
-              elevation: 3.0,
-              margin: EdgeInsets.symmetric(
-                vertical: 8.0,
-                horizontal: 16.0,
-              ),
-              child: ListTile(
-                title: Text(
-                  'Date: ${_latestFallRecord.date}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+              SizedBox(height: 20.0),
+              Card(
+                elevation: 3.0,
+                margin: EdgeInsets.symmetric(
+                  vertical: 8.0,
+                  horizontal: 16.0,
+                ),
+                child: ListTile(
+                  title: Text(
+                    'Date: ${_latestFallRecord.date}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  subtitle: FutureBuilder<String>(
+                    future: _getLocationString(_latestFallRecord.location),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Text('Loading...'); // Placeholder while fetching
+                      } else if (snapshot.hasError) {
+                        return Text('Error: ${snapshot.error}');
+                      } else {
+                        return Text(
+                          'Time: ${_latestFallRecord.time}\nDevice ID: ${_latestFallRecord.deviceId}\nLocation: ${snapshot.data}',
+                          style: TextStyle(
+                            color: Colors.black87,
+                          ),
+                        );
+                      }
+                    },
+                  ),
+                  trailing: Icon(
+                    _latestFallRecord.fall ?? false
+                        ? Icons.error
+                        : Icons.check_circle,
+                    color: _latestFallRecord.fall ?? false
+                        ? Colors.red
+                        : Colors.green,
                   ),
                 ),
-                subtitle: Text(
-                  'Time: ${_latestFallRecord.time}',
-                  style: TextStyle(
-                    color: Colors.black87,
-                  ),
-                ),
-                trailing: Icon(
-                  _latestFallRecord.fall ?? false
-                      ? Icons.error
-                      : Icons.check_circle,
-                  color: _latestFallRecord.fall ?? false
-                      ? Colors.red
-                      : Colors.green,
-                ),
               ),
-            ),
-          ],
+            ],
+          ),
         )
             : Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFA673E5)),
+            valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
           ),
         ),
       ],

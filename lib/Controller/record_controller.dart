@@ -1,9 +1,9 @@
 // Controller (RecordController)
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class RecordController {
-  final String baseUrl = 'http://10.131.76.206:3000';
   String path;
   http.Response? _res;
   final Map<String, dynamic> _body = {};
@@ -18,7 +18,13 @@ class RecordController {
     _headers["Content-Type"] = "application/json; charset=UTF-8";
   }
 
+  Future<String> getBaseUrl() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('baseUrl') ?? '';
+  }
+
   Future<void> post() async {
+    String baseUrl = await getBaseUrl();
     _res = await http.post(
       Uri.parse(baseUrl + path),
       headers: _headers,
@@ -28,6 +34,7 @@ class RecordController {
   }
 
   Future<void> get() async {
+    String baseUrl = await getBaseUrl();
     _res = await http.get(
       Uri.parse(baseUrl + path),
       headers: _headers,

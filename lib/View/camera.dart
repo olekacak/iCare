@@ -8,10 +8,10 @@ class CameraPage extends StatefulWidget {
 }
 
 class _CameraPageState extends State<CameraPage> {
-  late VideoPlayerController _videoPlayerController;
-  late ChewieController _chewieController;
+  VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
 
-  String camera1Url = 'http://YOUR_ESP32_IP_ADDRESS/stream';
+  String camera1Url = 'http://192.168.137.118/stream';
   String camera2Url = 'http://YOUR_ESP32_IP_ADDRESS/stream';
   String selectedCamera = 'Camera 1'; // Default selection
 
@@ -21,25 +21,32 @@ class _CameraPageState extends State<CameraPage> {
     _initializeVideoPlayer(camera1Url); // Initialize with Camera 1 URL by default
   }
 
-  void _initializeVideoPlayer(String videoUrl) {
+  Future<void> _initializeVideoPlayer(String videoUrl) async {
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
+
     _videoPlayerController = VideoPlayerController.network(videoUrl);
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController,
-      autoPlay: true,
-      looping: true,
-      aspectRatio: 16 / 9,
-      placeholder: Container(
-        color: Colors.black,
-      ),
-      errorBuilder: (context, errorMessage) {
-        return Center(
-          child: Text(
-            errorMessage,
-            style: TextStyle(color: Colors.white),
-          ),
-        );
-      },
-    );
+    await _videoPlayerController!.initialize();
+
+    setState(() {
+      _chewieController = ChewieController(
+        videoPlayerController: _videoPlayerController!,
+        autoPlay: true,
+        looping: true,
+        aspectRatio: 16 / 9,
+        placeholder: Container(
+          color: Colors.black,
+        ),
+        errorBuilder: (context, errorMessage) {
+          return Center(
+            child: Text(
+              errorMessage,
+              style: TextStyle(color: Colors.white),
+            ),
+          );
+        },
+      );
+    });
   }
 
   @override
@@ -122,9 +129,9 @@ class _CameraPageState extends State<CameraPage> {
                   padding: const EdgeInsets.all(16.0),
                   child: Center(
                     child: _chewieController != null &&
-                        _chewieController.videoPlayerController.value.isInitialized
+                        _chewieController!.videoPlayerController.value.isInitialized
                         ? Chewie(
-                      controller: _chewieController,
+                      controller: _chewieController!,
                     )
                         : CircularProgressIndicator(
                       valueColor: AlwaysStoppedAnimation<Color>(Colors.tealAccent),
@@ -141,8 +148,8 @@ class _CameraPageState extends State<CameraPage> {
 
   @override
   void dispose() {
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
     super.dispose();
-    _videoPlayerController.dispose();
-    _chewieController.dispose();
   }
 }

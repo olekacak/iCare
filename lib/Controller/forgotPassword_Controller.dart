@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ForgotPasswordController {
-  final String baseUrl = 'http://10.131.76.206:3000'; // Replace with your backend URL
   String path;
   http.Response? _res;
   final Map<String, dynamic> _body = {};
@@ -17,7 +17,13 @@ class ForgotPasswordController {
     _headers["Content-Type"] = "application/json; charset=UTF-8";
   }
 
+  Future<String> getBaseUrl() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    return prefs.getString('baseUrl') ?? '';
+  }
+
   Future<void> put() async {
+    String baseUrl = await getBaseUrl();
     _res = await http.put(
       Uri.parse(baseUrl + path),
       headers: _headers,
