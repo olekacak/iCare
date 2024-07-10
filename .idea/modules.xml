@@ -2,10 +2,6 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iCare.iml" filepath="$PROJECT_DIR$/.idea/modules/iCare.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iCare.main.iml" filepath="$PROJECT_DIR$/.idea/modules/iCare.main.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/iCare.test.iml" filepath="$PROJECT_DIR$/.idea/modules/iCare.test.iml" />
-      <module fileurl="file://$PROJECT_DIR$/icare.iml" filepath="$PROJECT_DIR$/icare.iml" />
       <module fileurl="file://$PROJECT_DIR$/android/icare_android.iml" filepath="$PROJECT_DIR$/android/icare_android.iml" />
     </modules>
   </component>
