@@ -5,6 +5,7 @@ plugins {
     // END: FlutterFire Configuration
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+    id("org.jetbrains.kotlin.android") apply false
 }
 
 def localProperties = new Properties()
@@ -48,8 +49,8 @@ android {
         applicationId "com.example.icare"
         // You can update the following values to match your application needs.
         // For more information, see: https://docs.flutter.dev/deployment/android#reviewing-the-gradle-build-configuration.
-        minSdkVersion 23
-        targetSdkVersion flutter.targetSdkVersion
+        minSdkVersion 24
+        targetSdkVersion 33
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
