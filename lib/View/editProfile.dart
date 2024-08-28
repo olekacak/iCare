@@ -32,7 +32,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _emailController = TextEditingController(text: widget.editProfile.email);
-    _passwordController = TextEditingController(text: widget.editProfile.password);
     _nameController = TextEditingController(text: widget.editProfile.name);
     _phoneNoController = TextEditingController(text: widget.editProfile.phoneNo);
     _addressController = TextEditingController(text: widget.editProfile.address);
@@ -55,7 +54,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       EditProfileModel updatedProfile = EditProfileModel(
         email: email,
-        password: _passwordController.text,
         name: _nameController.text,
         phoneNo: _phoneNoController.text,
         address: _addressController.text,
@@ -142,36 +140,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
-                      }
-                      return null;
-                    },
-                  ),
-                  SizedBox(height: 20),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: _obscureText,
-                    decoration: InputDecoration(
-                      labelText: 'Password',
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureText ? Icons.visibility : Icons.visibility_off,
-                          color: Colors.tealAccent,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureText = !_obscureText;
-                          });
-                        },
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter your password';
                       }
                       return null;
                     },

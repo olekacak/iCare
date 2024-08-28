@@ -60,7 +60,16 @@ class _DashboardPageState extends State<DashboardPage> {
 
   void _showDevicesDialog(BuildContext context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int userId = prefs.getInt('userId') ?? 0; // Retrieve userId from SharedPreferences as int
+    var userIdValue = prefs.get('userId');
+    int userId = 0;
+
+    if (userIdValue is int) {
+      userId = userIdValue;
+    } else if (userIdValue is String) {
+      userId = int.tryParse(userIdValue) ?? 0;
+    }
+
+    print('Retrieved userId in dashboard: $userId');
 
     List<DeviceModel> devices = await DeviceModel.getDevice(); // Fetch devices
 
@@ -86,8 +95,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                       ListTile(
                         title: Text(device.name),
-                        subtitle:
-                        Text('Age: ${device.age}, Relationship: ${device.relationship}'),
+                        subtitle: Text('Age: ${device.age}, Relationship: ${device.relationship}'),
                         onTap: () {
                           // Handle device selection if needed
                           Navigator.pop(context); // Close the dialog
@@ -118,6 +126,7 @@ class _DashboardPageState extends State<DashboardPage> {
       },
     );
   }
+
 
 
   void _showAddDeviceDialog(BuildContext context, int userId) {

@@ -40,10 +40,13 @@ class DeviceModel {
     );
   }
 
-
   Future<bool> addDevice() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userId = prefs.getInt('userId');
+    int? userId = prefs.getInt('userId'); // Ensure userId is retrieved as int
+    if (userId == null) {
+      print('Error: userId is null');
+      return false;
+    }
     DeviceController deviceController = DeviceController(path: "/device/addDevice");
     deviceController.setBody(toJson());
 
@@ -56,8 +59,7 @@ class DeviceModel {
         Map<String, dynamic>? responseData = await deviceController.result();
         if (responseData != null) {
           print('Raw JSON data: $responseData');
-          // Assuming backend returns the deviceId in the response
-          deviceId = responseData['deviceId'];
+          this.deviceId = responseData['deviceId']; // Update deviceId if needed
           return true;
         } else {
           print('Error: Response data is null');
@@ -68,34 +70,31 @@ class DeviceModel {
         return false;
       }
     } catch (e) {
-      print("Error add device: $e");
+      print("Error adding device: $e");
       return false;
     }
   }
 
   static Future<List<DeviceModel>> getDevice() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userId = prefs.getInt('userId');
-    print("userId for device: $userId");
+    String? userIdString = prefs.getString('userId'); // Retrieve as String
+    int? userId = userIdString != null ? int.tryParse(userIdString) : null; // Convert to int
 
     if (userId == null) {
-      print("Error: userId is null");
+      print("Error: userId is null or cannot be converted to int");
       return [];
     }
 
     try {
       DeviceController deviceController = DeviceController(path: "/device/getDevice/userId/$userId");
 
-      // Perform GET request to fetch all devices based on userId
       await deviceController.get();
-
       int statusCode = deviceController.status();
       if (statusCode == 200) {
         var responseData = await deviceController.result();
         print('Response data: $responseData');
 
         if (responseData != null && responseData is List) {
-          // Convert each item in the list to DeviceModel using fromJson
           List<DeviceModel> devices = responseData.map((json) => DeviceModel.fromJson(json)).toList();
           return devices;
         } else {
@@ -111,5 +110,4 @@ class DeviceModel {
       return [];
     }
   }
-
 }

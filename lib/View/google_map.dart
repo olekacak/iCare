@@ -8,6 +8,10 @@ import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class GoogleMapPage extends StatefulWidget {
+  final LatLng? destination; // Add this line
+
+  GoogleMapPage({this.destination}); // Modify the constructor
+
   @override
   _GoogleMapPageState createState() => _GoogleMapPageState();
 }
@@ -15,7 +19,7 @@ class GoogleMapPage extends StatefulWidget {
 class _GoogleMapPageState extends State<GoogleMapPage> {
   GoogleMapController? mapController;
   LatLng? _currentLocation;
-  final LatLng initialCameraPosition = const LatLng(2.328365, 102.292882); // Default initial position
+  LatLng initialCameraPosition = const LatLng(2.328365, 102.292882); // Default initial position
   PermissionStatus _permissionStatus = PermissionStatus.denied;
   final TextEditingController _searchController = TextEditingController();
   LatLng? _destination;
@@ -32,6 +36,15 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
     super.initState();
     _checkPermission();
     _getCurrentLocation();
+
+    // Use initial destination if provided
+    if (widget.destination != null) {
+      setState(() {
+        _destination = widget.destination;
+        _showNavigationButton = true; // Show navigation button if destination is set
+      });
+      _showRoutes(); // Calculate and display routes for the initial destination
+    }
   }
 
   Future<void> _checkPermission() async {
@@ -55,6 +68,27 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Your App Title'),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.location_searching), // Icon for returning to current location
+            onPressed: () {
+              if (_currentLocation != null && mapController != null) {
+                mapController!.animateCamera(CameraUpdate.newLatLngZoom(_currentLocation!, 15.0));
+              }
+            },
+          ),
+          if (_showNavigationButton) // Conditionally add the button
+            IconButton(
+              icon: Icon(Icons.navigation),
+              onPressed: () {
+                // Navigate based on _destination
+                // Example: Navigator.pushNamed(context, '/destination_page');
+              },
+            ),
+        ],
+      ),
       body: Stack(
         children: [
           _buildMap(),
@@ -124,6 +158,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
         onTap: (LatLng latLng) {
           setState(() {
             _destination = latLng;
+
             _showNavigationButton = true; // Show navigation button when destination is set
             _polylines.clear(); // Clear existing polylines
           });
@@ -140,6 +175,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       );
     }
   }
+
 
   void _onMapCreated(GoogleMapController controller) {
     setState(() {
@@ -184,20 +220,24 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
   }
 
   void _selectPlace(Prediction prediction) async {
-    final details = await _getPlaceDetails(prediction.placeId!);
-    if (details.geometry != null && details.geometry!.location != null) {
-      final destination = LatLng(
-        details.geometry!.location!.lat,
-        details.geometry!.location!.lng,
-      );
-      setState(() {
-        _destination = destination;
-        _showNavigationButton = true; // Show navigation button when destination is set
-      });
-      print('Selected destination: $_destination');
-      _showRoutes();
-    } else {
-      _showErrorDialog('Place details are incomplete.');
+    try {
+      final details = await _getPlaceDetails(prediction.placeId!);
+      if (details.geometry != null && details.geometry!.location != null) {
+        final destination = LatLng(
+          details.geometry!.location!.lat,
+          details.geometry!.location!.lng,
+        );
+        print('Selected destination: $destination'); // Add debug output
+        setState(() {
+          _destination = destination;
+          _showNavigationButton = true; // Show navigation button when destination is set
+        });
+        _showRoutes(); // Calculate and display routes for the selected location
+      } else {
+        _showErrorDialog('Place details are incomplete.');
+      }
+    } catch (e) {
+      _showErrorDialog('Error fetching place details: $e');
     }
   }
 
@@ -226,6 +266,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
           _routes = response.routes;
           _polylines.clear(); // Clear existing polylines
           _showRouteSelectionPanel();
+          _showNavigationButton = true; // Show navigation button
         });
       } else {
         print('Failed to fetch directions: ${response.errorMessage}');
@@ -236,6 +277,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
       print('Error in _showRoutes: $e');
     }
   }
+
 
   void _showRouteSelectionPanel() {
     showModalBottomSheet(
@@ -371,6 +413,7 @@ class _GoogleMapPageState extends State<GoogleMapPage> {
 
   void _startNavigation() async {
     if (_destination == null) {
+      print('Selected destination: $_destination');
       _showErrorDialog('Destination is not set.');
       return;
     }

@@ -5,7 +5,6 @@ import '../Controller/editProfile_controller.dart';
 
 class EditProfileModel {
   String email;
-  String password;
   String name;
   String phoneNo;
   String address;
@@ -15,7 +14,6 @@ class EditProfileModel {
 
   EditProfileModel({
     required this.email,
-    required this.password,
     required this.name,
     required this.phoneNo,
     required this.address,
@@ -27,7 +25,6 @@ class EditProfileModel {
   factory EditProfileModel.fromJson(Map<String, dynamic> json) {
     return EditProfileModel(
       email: json['email'],
-      password: json['password'],
       name: json['name'],
       phoneNo: json['phoneNo'],
       address: json['address'],
@@ -40,7 +37,6 @@ class EditProfileModel {
   Map<String, dynamic> toJson() {
     return {
       'email': email,
-      'password': password,
       'name': name,
       'phoneNo': phoneNo,
       'address': address,
@@ -52,7 +48,9 @@ class EditProfileModel {
 
   static Future<EditProfileModel?> loadByUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userId = prefs.getInt('userId');
+    String? userIdString = prefs.getString('userId');
+    int? userId = userIdString != null ? int.tryParse(userIdString) : null;
+
     if (userId == null) {
       print("No userId found in SharedPreferences");
       return null;
@@ -85,7 +83,9 @@ class EditProfileModel {
 
   Future<bool> updateUser() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int? userId = prefs.getInt('userId');
+    String? userIdString = prefs.getString('userId');
+    int? userId = userIdString != null ? int.tryParse(userIdString) : null;
+
     if (userId == null) {
       print("No userId found in SharedPreferences");
       return false;
@@ -111,5 +111,6 @@ class EditProfileModel {
       return false;
     }
   }
+
 
 }

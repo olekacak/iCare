@@ -16,29 +16,30 @@ class LoginModel {
 
     try {
       await loginController.post();
+      print("Login request sent. Status code: ${loginController.status()}");
+
       if (loginController.status() == 200) {
         Map<String, dynamic> result = await loginController.result();
+        print("Login successful. Response: $result");
 
-        // Ensure you're accessing userId correctly from the response
-        int? userId = result['user']['userId'];
+        String? userIdString = result['user']['userId']?.toString();
+        int? userId = userIdString != null ? int.tryParse(userIdString) : null;
 
         if (userId != null) {
           SharedPreferences prefs = await SharedPreferences.getInstance();
-          await prefs.setInt('userId', userId);
+          await prefs.setInt('userId', userId); // Save userId as int
           print("UserId saved to SharedPreferences: $userId");
           await prefs.setString('email', email);
           print("Email saved to SharedPreferences: $email");
 
-          // Store user data in SharedPreferences if needed
-          // await _storeUserData(result['user']); // Assuming you want to store user data
-
+          await _storeUserData(result['user']);
           return true;
         } else {
-          print("UserId not found in response");
+          print("UserId not found in response or cannot be converted to int");
           return false;
         }
       } else {
-        print("Error: Status code ${loginController.status()}"); // Handle other status codes
+        print("Error: Status code ${loginController.status()}");
         return false;
       }
     } catch (e) {
@@ -46,6 +47,8 @@ class LoginModel {
       return false;
     }
   }
+
+
 
   Future<void> _storeUserData(Map<String, dynamic> userData) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

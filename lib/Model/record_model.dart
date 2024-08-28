@@ -7,10 +7,19 @@ class RecordModel {
   String? time;
   bool? fall;
   String? deviceId;
+  String? name;
   final dynamic location;
   int? fallId;
 
-  RecordModel({this.date, this.time, this.fall, this.deviceId, this.location, this.fallId});
+  RecordModel({
+    this.date,
+    this.time,
+    this.fall,
+    this.deviceId,
+    this.name,
+    this.location,
+    this.fallId,
+  });
 
   factory RecordModel.fromJson(Map<String, dynamic> json) {
     return RecordModel(
@@ -18,6 +27,7 @@ class RecordModel {
       time: json['time'],
       fall: json['fall'] is bool ? json['fall'] : json['fall'] == 'true',
       deviceId: json['deviceId'],
+      name: json['deviceName'] ?? json['name'], // Handle possible different key names
       location: json['location'],
       fallId: json['fallId'],
     );
@@ -29,6 +39,7 @@ class RecordModel {
       'time': time,
       'fall': fall,
       'deviceId': deviceId,
+      'deviceName': name, // Use 'deviceName' for consistency
       'location': location,
       'fallId': fallId,
     };

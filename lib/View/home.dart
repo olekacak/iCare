@@ -5,7 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../Model/record_model.dart';
 import 'camera.dart';
 import 'dashboard.dart';
-import 'google_map.dart'; // Import your other pages as needed
+import 'google_map.dart';
+import 'heartRate.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -22,6 +23,7 @@ class _HomePageState extends State<HomePage> {
   );
   Timer? _timer;
   int _currentIndex = 0;
+  LatLng _mapDestination = LatLng(0.0, 0.0);
 
   @override
   void initState() {
@@ -46,23 +48,29 @@ class _HomePageState extends State<HomePage> {
     try {
       RecordModel? newData = await RecordModel.getFallLatest();
       if (newData != null) {
-        // Compare newData with _latestFallRecord before updating
-        if (newData.date != _latestFallRecord.date ||
-            newData.time != _latestFallRecord.time ||
-            newData.fall != _latestFallRecord.fall ||
-            newData.deviceId != _latestFallRecord.deviceId ||
-            newData.location != _latestFallRecord.location) {
-          setState(() {
-            _latestFallRecord = newData; // Update the latest fall record
-          });
+        // Validate the newData
+        if (newData.date != null && newData.time != null && newData.deviceId != null) {
+          // Compare newData with _latestFallRecord before updating
+          if (newData.date != _latestFallRecord.date ||
+              newData.time != _latestFallRecord.time ||
+              newData.fall != _latestFallRecord.fall ||
+              newData.deviceId != _latestFallRecord.deviceId ||
+              newData.name != _latestFallRecord.name ||
+              newData.location != _latestFallRecord.location) {
+            setState(() {
+              _latestFallRecord = newData; // Update the latest fall record
+            });
 
-          // Post updated record to backend
-          bool success = await _latestFallRecord.postFall();
-          if (success) {
-            print('Successfully sent updated fall record to backend');
-          } else {
-            print('Failed to send updated fall record to backend');
+            // Post updated record to backend
+            bool success = await _latestFallRecord.postFall();
+            if (success) {
+              print('Successfully sent updated fall record to backend');
+            } else {
+              print('Failed to send updated fall record to backend');
+            }
           }
+        } else {
+          print('Received data is missing required fields.');
         }
       }
     } catch (e) {
@@ -71,10 +79,10 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+
   Future<void> getAllFallRecords() async {
     try {
       List<RecordModel> allFallRecords = await RecordModel.getAllFall();
-
       // Show modal bottom sheet with the list of fall records
       showModalBottomSheet(
         context: context,
@@ -89,12 +97,12 @@ class _HomePageState extends State<HomePage> {
                   future: _getLocationString(record.location),
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Text('Loading...'); // Placeholder while fetching
+                      return Text('Loading...');
                     } else if (snapshot.hasError) {
                       return Text('Error: ${snapshot.error}');
                     } else {
                       return Text(
-                        'Time: ${record.time}\nDevice ID: ${record.deviceId}\nLocation: ${snapshot.data}',
+                        'Time: ${record.time}\nDevice ID: ${record.deviceId}\nName: ${record.name ?? 'Unknown'}\nLocation: ${snapshot.data}',
                         style: TextStyle(
                           color: Colors.black87,
                         ),
@@ -107,10 +115,9 @@ class _HomePageState extends State<HomePage> {
                   color: record.fall ?? false ? Colors.red : Colors.green,
                 ),
                 onTap: () {
-                  // Navigate to GoogleMapPage when the record is tapped
                   LatLng destination = LatLng(
-                    double.parse(record.location.split(',')[0].split(':')[1].trim()), // Parse latitude from location string
-                    double.parse(record.location.split(',')[1].split(':')[1].trim()), // Parse longitude from location string
+                    double.parse(record.location!['lat'].toString()),
+                    double.parse(record.location!['lon'].toString()),
                   );
                   _navigateToMap(destination);
                 },
@@ -171,22 +178,25 @@ class _HomePageState extends State<HomePage> {
 
   void _navigateToMap(LatLng destination) {
     setState(() {
-      _currentIndex = 1; // Index 1 corresponds to the map tab in your BottomNavigationBar
+      _mapDestination = destination;
+      //print("destination is {$destination}");
+      _currentIndex = 1; // Switch to the Map tab
     });
   }
-
 
   @override
   Widget build(BuildContext context) {
     final List<Widget> _pages = [
       _buildHomeContent(),
-      GoogleMapPage(),
+      HeartRatePage(),
+      GoogleMapPage(destination: _mapDestination),
       CameraPage(),
       DashboardPage(),
     ];
 
     final List<String> _titles = [
       'Home',
+      'Heart Rate',
       'Map',
       'Camera',
       'Dashboard',
@@ -194,10 +204,12 @@ class _HomePageState extends State<HomePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _titles[_currentIndex],
-          style: TextStyle(
-            color: Colors.white, // Set the text color if needed
+        title: Center(
+          child: Text(
+            _titles[_currentIndex],
+            style: TextStyle(
+              color: Colors.white, // Set the text color if needed
+            ),
           ),
         ),
         backgroundColor: Colors.tealAccent, // Set the desired background color here
@@ -218,8 +230,12 @@ class _HomePageState extends State<HomePage> {
             label: 'Home',
           ),
           BottomNavigationBarItem(
+            icon: Icon(Icons.favorite),
+            label: 'Heart Rate',
+          ),
+          BottomNavigationBarItem(
             icon: Icon(Icons.map),
-            label: 'Map', // Change label to 'Map'
+            label: 'Map',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.camera),
@@ -325,7 +341,7 @@ class _HomePageState extends State<HomePage> {
                         return Text('Error: ${snapshot.error}');
                       } else {
                         return Text(
-                          'Time: ${_latestFallRecord.time}\nDevice ID: ${_latestFallRecord.deviceId}\nLocation: ${snapshot.data}',
+                          'Time: ${_latestFallRecord.time}\nDevice ID: ${_latestFallRecord.deviceId}\nName: ${_latestFallRecord.name}\nLocation: ${snapshot.data}',
                           style: TextStyle(
                             color: Colors.black87,
                           ),
