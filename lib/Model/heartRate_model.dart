@@ -5,7 +5,7 @@ import 'package:icare/Controller/record_controller.dart';
 import '../Controller/heartRate_controller.dart';
 
 class HeartRateModel {
-  String? heartRateId;
+  int? heartRateId;
   int? heartRate;
   String? date;
   String? time;
@@ -26,16 +26,19 @@ class HeartRateModel {
   });
 
   factory HeartRateModel.fromJson(Map<String, dynamic> json) {
+    print('JSON data received: $json'); // Debugging output
+
     return HeartRateModel(
-      heartRateId: json['heartRateId'],
-      heartRate: json['heartRate'] != null ? int.tryParse(json['heartRate']) : 0,
+      heartRateId: json['heartRateId'] as int? ?? 0,
+      heartRate: json['heartRate'] as int? ?? 0,
       date: formatDate(json['date'] ?? ''),
-      time: json['time'],
-      deviceId: json['mac'],
-      name: json['deviceName'] ?? json['name'],
+      time: json['time'] as String? ?? '',
+      deviceId: json['mac'] as String? ?? '',
+      name: json['deviceName'] ?? json['name'] ?? '',
       status: json['status'] ?? 'Unknown',
     );
   }
+
 
 
   Map<String, dynamic> toJson() {
@@ -57,45 +60,44 @@ class HeartRateModel {
     return '$year-$month-$day';
   }
 
-  static Future<HeartRateModel?> sendStartSignal() async {
+  // Method to send the start signal
+  static Future<HeartRateModel?> sendStartSignal({required String? deviceId}) async {
     try {
+      // Simulate an HTTP request to send the start signal to the device
       HeartRateController recordController = HeartRateController(path: "/startHeartRate");
+      recordController.setBody({'deviceId': deviceId});
       await recordController.postSignal();
       int statusCode = recordController.status();
 
       print('Response status: $statusCode');
-
       if (statusCode == 200) {
         var responseData = await recordController.result();
         print('Response Data: $responseData');
-
         if (responseData != null && responseData is Map<String, dynamic>) {
-          // Handle cases where 'status' field is the only expected field
           if (responseData.containsKey('status')) {
-            return HeartRateModel(status: responseData['status']);
-          } else {
-            print('Response does not contain expected fields: $responseData');
-            return null;
+            return HeartRateModel(
+              status: responseData['status'],
+              heartRateId: responseData['heartRateId'],
+              heartRate: responseData['heartRate'],
+              date: responseData['date'],
+              time: responseData['time'],
+              deviceId: deviceId,
+              name: responseData['name'],
+            );
           }
-        } else {
-          print('Invalid response format: $responseData');
-          return null;
         }
-      } else {
-        print('Failed with status code: $statusCode');
-        return null;
       }
     } catch (e) {
       print('Error sending start signal: $e');
-      return null;
     }
+    return null;
   }
 
 
-
-  static Future<HeartRateModel?> getLatestHeartRate() async {
+  static Future<HeartRateModel?> getLatestHeartRate({required String? deviceId}) async {
     try {
-      RecordController recordController = RecordController(path: "/heartRate/latest");
+      final String url = "/heartRate/latest?deviceId=$deviceId";
+      RecordController recordController = RecordController(path: url);
 
       await recordController.get();
       int statusCode = recordController.status();
@@ -110,9 +112,11 @@ class HeartRateModel {
         return null;
       }
     } catch (e) {
+      print('Error getting latest heart rate: $e');
       return null;
     }
   }
+
 
   Future<bool> postHeartRate() async {
     if (_isProcessing) return false; // Prevent multiple submissions
@@ -122,7 +126,7 @@ class HeartRateModel {
       // Create the RecordController with the endpoint for posting heart rate data
       RecordController recordController = RecordController(path: "/heartRate/postHeartRate");
 
-      // Set the body of the request
+      // Set the body of the request with deviceId included
       recordController.setBody(toJson());
 
       // Print the JSON body for debugging
@@ -155,31 +159,36 @@ class HeartRateModel {
     }
   }
 
-
-
-
-  static Future<List<HeartRateModel>> getAllHeartRates() async {
+  static Future<List<HeartRateModel>> getAllHeartRates({required String deviceId}) async {
     try {
-      RecordController recordController = RecordController(path: "/heartRate/getAllHeartRate");
+      final String url = "/heartRate/getAllHeartRate?deviceId=$deviceId";
+      RecordController recordController = RecordController(path: url);
 
       await recordController.get();
       int statusCode = recordController.status();
       if (statusCode == 200) {
         var responseData = await recordController.result();
+        print('Response Data: $responseData'); // Debugging output
+
         if (responseData != null && responseData is List) {
-          List<HeartRateModel> heartRateRecords = responseData.map((json) => HeartRateModel.fromJson(json)).toList();
-          return heartRateRecords;
+          // Ensure that each item in the list is a map and then create HeartRateModel objects
+          List<HeartRateModel> heartRates = responseData
+              .where((item) => item is Map<String, dynamic>) // Filter out items that are not maps
+              .map((item) => HeartRateModel.fromJson(item as Map<String, dynamic>)) // Convert to HeartRateModel
+              .toList();
+          return heartRates;
         } else {
-          print('Error: Response data is null or not a list');
+          print('Response Data is not a List or is null.');
           return [];
         }
       } else {
-        print('Failed to fetch heart rate records. Status code: $statusCode');
+        print('Error: HTTP status code $statusCode');
         return [];
       }
     } catch (e) {
-      print("Error fetching heart rate records: $e");
+      print('Error getting heart rate records: $e');
       return [];
     }
   }
+
 }

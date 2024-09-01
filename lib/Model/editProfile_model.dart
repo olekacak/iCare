@@ -48,8 +48,7 @@ class EditProfileModel {
 
   static Future<EditProfileModel?> loadByUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? userIdString = prefs.getString('userId');
-    int? userId = userIdString != null ? int.tryParse(userIdString) : null;
+    int? userId = prefs.getInt('userId'); // Use getInt to retrieve the userId as an int
 
     if (userId == null) {
       print("No userId found in SharedPreferences");

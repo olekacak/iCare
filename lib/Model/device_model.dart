@@ -77,8 +77,7 @@ class DeviceModel {
 
   static Future<List<DeviceModel>> getDevice() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    String? userIdString = prefs.getString('userId'); // Retrieve as String
-    int? userId = userIdString != null ? int.tryParse(userIdString) : null; // Convert to int
+    int? userId = prefs.getInt('userId'); // Use getInt to retrieve the userId as an int
 
     if (userId == null) {
       print("Error: userId is null or cannot be converted to int");

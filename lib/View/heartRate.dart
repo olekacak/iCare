@@ -1,80 +1,215 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../Model/heartRate_model.dart';
+import 'package:flutter/scheduler.dart';
 
 class HeartRatePage extends StatefulWidget {
   @override
   _HeartRatePageState createState() => _HeartRatePageState();
 }
 
-class _HeartRatePageState extends State<HeartRatePage> {
+class _HeartRatePageState extends State<HeartRatePage> with SingleTickerProviderStateMixin {
   int _heartRate = 0;
   String _lastUpdateTime = "Loading...";
   bool _isProcessing = false;
-  bool _isHeartRatePosted = false; // Add this flag
+  bool _isHeartRatePosted = false;
+  String? _selectedDeviceId;
+  Map<String, String> _deviceMap = {}; // Map to hold device ID and names
+  Map<String, int> _deviceHeartRates = {};
+  Map<String, String> _deviceUpdateTimes = {};
+  bool _canMeasure = true; // Add state to manage measurement availability
+  late AnimationController _animationController;
+  late Animation<double> _blinkAnimation;
+  int _minHeartRate = 0;
+  int _maxHeartRate = 0;
+  int _avgHeartRate = 0;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize AnimationController and Tween
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    )
+      ..repeat(reverse: true);
+
+    _blinkAnimation = Tween<double>(begin: 1.0, end: 0.5).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+
+    // Load device IDs and names from shared preferences
+    _loadDeviceData();
   }
 
-  void _sendStartSignal() async {
-    if (_isProcessing) return; // Prevent multiple requests
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  void _fetchAndProcessHeartRateData() async {
+    if (_selectedDeviceId == null) {
+      print("No device selected");
+      return;
+    }
+
+    try {
+      // Fetch all heart rate data for today
+      DateTime now = DateTime.now();
+      String today = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now
+          .day.toString().padLeft(2, '0')}';
+
+      List<HeartRateModel> heartRates = await HeartRateModel.getAllHeartRates(
+          deviceId: _selectedDeviceId!);
+
+      // Filter records to include only today's data
+      List<HeartRateModel> todayHeartRates = heartRates.where((e) =>
+      e.date == today).toList();
+
+      if (todayHeartRates.isNotEmpty) {
+        int minHeartRate = todayHeartRates.map((e) => e.heartRate ?? 0).reduce((
+            a, b) => a < b ? a : b);
+        int maxHeartRate = todayHeartRates.map((e) => e.heartRate ?? 0).reduce((
+            a, b) => a > b ? a : b);
+        double avgHeartRate = todayHeartRates.map((e) => e.heartRate ?? 0)
+            .reduce((a, b) => a + b) / todayHeartRates.length;
+
+        setState(() {
+          _minHeartRate = minHeartRate;
+          _maxHeartRate = maxHeartRate;
+          _avgHeartRate = avgHeartRate.round(); // Round to the nearest integer
+        });
+      } else {
+        // No data for today
+        setState(() {
+          _minHeartRate = 0;
+          _maxHeartRate = 0;
+          _avgHeartRate = 0;
+        });
+      }
+    } catch (e) {
+      print('Error fetching heart rate data: $e');
+      // Handle error case here
+    }
+  }
+
+
+  void _loadDeviceData() async {
+    final prefs = await SharedPreferences.getInstance();
+    List<String>? deviceId = prefs.getStringList('deviceId');
+    List<String>? deviceName = prefs.getStringList('deviceName');
+
+    setState(() {
+      if (deviceId != null && deviceName != null &&
+          deviceId.length == deviceName.length) {
+        _deviceMap = Map.fromIterables(deviceId, deviceName);
+      } else {
+        _deviceMap = {};
+      }
+    });
+  }
+
+  void _startHeartRateMeasurement() async {
+    if (!_canMeasure || _isProcessing || _selectedDeviceId == null) {
+      print('Measurement start condition not met.');
+      return;
+    }
 
     setState(() {
       _isProcessing = true;
-      _isHeartRatePosted = false; // Reset flag
+      _isHeartRatePosted = false;
+      _canMeasure = false; // Disable the button until measurement is complete
     });
 
     try {
-      print("Sending start signal...");
-      HeartRateModel? heartRateModel = await HeartRateModel.sendStartSignal();
-      print("Received start signal response: ${heartRateModel?.status}");
+      print("Sending start signal to $_selectedDeviceId...");
+      HeartRateModel? heartRateModel = await HeartRateModel.sendStartSignal(
+          deviceId: _selectedDeviceId);
 
-      if (heartRateModel != null && heartRateModel.status == 'Heart rate detection started') {
-        setState(() {
-          _heartRate = 0;
-          _lastUpdateTime = heartRateModel.status;
+      if (heartRateModel != null &&
+          heartRateModel.status == 'Heart rate detection started') {
+        Timer.periodic(Duration(seconds: 2), (timer) async {
+          try {
+            HeartRateModel? latestHeartRate = await HeartRateModel
+                .getLatestHeartRate(deviceId: _selectedDeviceId);
+            if (latestHeartRate != null && latestHeartRate.heartRate != null) {
+              if (latestHeartRate.deviceId == _selectedDeviceId) {
+                setState(() {
+                  _deviceHeartRates[_selectedDeviceId!] =
+                  latestHeartRate.heartRate!;
+                  _deviceUpdateTimes[_selectedDeviceId!] =
+                  '${latestHeartRate.date} ${latestHeartRate.time}';
+                  _heartRate = latestHeartRate.heartRate!;
+                  _lastUpdateTime =
+                  '${latestHeartRate.date} ${latestHeartRate.time}';
+                });
+
+                timer.cancel(); // Stop the timer once we have the heart rate
+
+                // Post the heart rate data to the backend
+                HeartRateModel heartRateToPost = HeartRateModel(
+                  heartRateId: null,
+                  // ID will be generated by the backend
+                  heartRate: _heartRate,
+                  date: latestHeartRate.date,
+                  time: latestHeartRate.time,
+                  deviceId: _selectedDeviceId,
+                  name: _deviceMap[_selectedDeviceId],
+                  status: 'Posted',
+                );
+                bool success = await heartRateToPost.postHeartRate();
+                if (success) {
+                  setState(() {
+                    _isHeartRatePosted = true;
+                  });
+                  print('Heart rate data posted successfully');
+                  _fetchAndProcessHeartRateData();
+                } else {
+                  print('Failed to post heart rate data');
+                }
+              }
+            }
+          } catch (e) {
+            print('Error getting latest heart rate: $e');
+          }
         });
 
-        // Wait 20 seconds for heart rate measurement
-        await Future.delayed(Duration(seconds: 20));
-
-        // Fetch latest heart rate data
-        HeartRateModel? latestHeartRate = await HeartRateModel.getLatestHeartRate();
-        print("Received latest heart rate response: ${latestHeartRate?.heartRate}");
-
-        if (latestHeartRate != null) {
-          setState(() {
-            _heartRate = latestHeartRate.heartRate ?? 0;
-            _lastUpdateTime = latestHeartRate.time ?? 'No data';
-          });
-
-          // Only send the heart rate data if it hasn't been posted yet
-          if (!_isHeartRatePosted) {
-            bool success = await latestHeartRate.postHeartRate();
-            if (success) {
-              print('Heart rate data successfully sent to backend');
-              _isHeartRatePosted = true; // Mark as posted
-            } else {
-              print('Failed to send heart rate data to backend');
-            }
-          }
-        } else {
-          print('No heart rate data received');
-        }
+        // Wait for 18 seconds before allowing another measurement
+        await Future.delayed(Duration(seconds: 18));
       } else {
-        print('Error starting heart rate detection: ${heartRateModel?.status}');
+        print(
+            'Failed to start heart rate detection: ${heartRateModel?.status}');
       }
     } catch (e) {
       print('Error during heart rate measurement: $e');
     } finally {
-      // Ensure this runs regardless of success or failure
       setState(() {
-        _isProcessing = false; // Allow new request
+        _isProcessing = false;
+        _canMeasure = true; // Re-enable the button after 18 seconds
       });
+      _animationController.stop();
     }
   }
+
+  void _onDeviceSelected(String? newValue) {
+    setState(() {
+      _selectedDeviceId = newValue;
+      if (_selectedDeviceId != null) {
+        _fetchAndProcessHeartRateData(); // Fetch and process data when a device is selected
+      }
+      if (_deviceHeartRates.containsKey(newValue)) {
+        _heartRate = _deviceHeartRates[newValue]!;
+        _lastUpdateTime = _deviceUpdateTimes[newValue]!;
+      } else {
+        _heartRate = 0;
+        _lastUpdateTime = "Loading...";
+      }
+    });
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +236,10 @@ class _HeartRatePageState extends State<HeartRatePage> {
                 ClipPath(
                   clipper: MountainTrailClipper(),
                   child: Container(
-                    height: MediaQuery.of(context).size.height,
+                    height: MediaQuery
+                        .of(context)
+                        .size
+                        .height,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [Colors.blueGrey[800]!, Colors.tealAccent],
@@ -116,41 +254,72 @@ class _HeartRatePageState extends State<HeartRatePage> {
                     painter: HeartRateChartPainter(),
                   ),
                 ),
-                Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.favorite,
-                        size: 100,
-                        color: Colors.red,
-                      ),
-                      SizedBox(height: 20),
-                      Text(
-                        '$_heartRate BPM',
-                        style: TextStyle(
-                          fontSize: 64,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                Positioned.fill(
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Device selection dropdown
+                        DropdownButton<String>(
+                          value: _selectedDeviceId,
+                          items: _deviceMap.entries.map((entry) {
+                            return DropdownMenuItem<String>(
+                              value: entry.key, // Device ID
+                              child: Text(entry.value), // Device Name
+                            );
+                          }).toList(),
+                          onChanged: (String? newValue) {
+                            _onDeviceSelected(newValue);
+                          },
                         ),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        _lastUpdateTime,
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white70,
+                        SizedBox(height: 20),
+                        AnimatedBuilder(
+                          animation: _blinkAnimation,
+                          builder: (context, child) {
+                            return Opacity(
+                              opacity: _isProcessing
+                                  ? _blinkAnimation.value
+                                  : 1.0,
+                              child: child,
+                            );
+                          },
+                          child: Icon(
+                            Icons.favorite,
+                            size: 100,
+                            color: Colors.red,
+                          ),
                         ),
-                      ),
-                      SizedBox(height: 50),
-                      ElevatedButton(
-                        onPressed: _isProcessing ? null : _sendStartSignal,
-                        child: _isProcessing
-                            ? CircularProgressIndicator(color: Colors.white)
-                            : Text('Start Heart Rate Measurement'),
-                      ),
-                      _buildHeartRateChart(),
-                    ],
+                        SizedBox(height: 20),
+                        Text(
+                          '$_heartRate BPM',
+                          style: TextStyle(
+                            fontSize: 64,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          _lastUpdateTime,
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white70,
+                          ),
+                        ),
+                        SizedBox(height: 50),
+                        ElevatedButton(
+                          onPressed: !_canMeasure || _isProcessing
+                              ? null
+                              : _startHeartRateMeasurement,
+                          child: _isProcessing
+                              ? CircularProgressIndicator(color: Colors.white)
+                              : Text('Measure'),
+                        ),
+                        _buildHeartRateChart(
+                            _minHeartRate, _maxHeartRate, _avgHeartRate),
+                        // Pass the values here
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -160,166 +329,153 @@ class _HeartRatePageState extends State<HeartRatePage> {
       ),
     );
   }
-
-  Widget _buildHeartRateChart() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 0.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            height: 100,
-            child: CustomPaint(
-              painter: HeartRateChartPainter(),
-            ),
-          ),
-          SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      'MIN',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '42',
-                          style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'BPM',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'at 3:45 pm',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      'MAX',
-                      style: TextStyle(color: Colors.white70, fontSize: 16),
-                      textAlign: TextAlign.center,
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          '121',
-                          style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(width: 5),
-                        Text(
-                          'BPM',
-                          style: TextStyle(color: Colors.white, fontSize: 16),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                    Text(
-                      'at 2:08 pm',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
 }
 
+// Modify _buildHeartRateChart to accept parameters
+Widget _buildHeartRateChart(int minHeartRate, int maxHeartRate, int avgHeartRate) {
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 0.0),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: 100,
+          child: CustomPaint(
+            painter: HeartRateChartPainter(),
+          ),
+        ),
+        SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    'MIN',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$minHeartRate',
+                        style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'BPM',
+                        style: TextStyle(color: Colors.white70, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    'MAX',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$maxHeartRate',
+                        style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'BPM',
+                        style: TextStyle(color: Colors.white70, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    'AVG',
+                    style: TextStyle(color: Colors.white70, fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '$avgHeartRate',
+                        style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold),
+                        textAlign: TextAlign.center,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'BPM',
+                        style: TextStyle(color: Colors.white70, fontSize: 18),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+// Custom Clipper
 class MountainTrailClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     Path path = Path();
-
-    // Increase this value to move the mountain trail higher
-    double verticalOffset = 150.0; // Increased value to move trail higher
-
-    List<Offset> points = [
-      Offset(0, size.height - 150 - verticalOffset),
-      Offset(size.width * 0.1, size.height - 200 - verticalOffset),
-      Offset(size.width * 0.2, size.height - 170 - verticalOffset),
-      Offset(size.width * 0.3, size.height - 220 - verticalOffset),
-      Offset(size.width * 0.4, size.height - 180 - verticalOffset),
-      Offset(size.width * 0.5, size.height - 200 - verticalOffset),
-      Offset(size.width * 0.6, size.height - 150 - verticalOffset),
-      Offset(size.width * 0.7, size.height - 190 - verticalOffset),
-      Offset(size.width * 0.8, size.height - 160 - verticalOffset),
-      Offset(size.width, size.height - 150 - verticalOffset),
-    ];
-
-    if (points.isNotEmpty) {
-      // Move to the first point
-      path.moveTo(points[0].dx, points[0].dy);
-
-      // Draw a smooth curve through all the points
-      for (int i = 1; i < points.length; i++) {
-        Offset prevPoint = points[i - 1];
-        Offset currentPoint = points[i];
-
-        // Use quadratic Bezier curve for smoothness
-        path.quadraticBezierTo(
-          (prevPoint.dx + currentPoint.dx) / 2, // Control point x
-          (prevPoint.dy + currentPoint.dy) / 2, // Control point y
-          currentPoint.dx, // End point x
-          currentPoint.dy, // End point y
-        );
-      }
-    }
-
-    // Close the path to clip the area below the mountain trail line
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
+    path.lineTo(0, size.height * 0.5);
+    path.lineTo(size.width * 0.4, size.height * 0.7);
+    path.lineTo(size.width * 0.8, size.height * 0.6);
+    path.lineTo(size.width, size.height * 0.7);
+    path.lineTo(size.width, 0);
     path.close();
-
     return path;
   }
 
   @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) {
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) {
     return false;
   }
 }
 
+// Custom Painter
 class HeartRateChartPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    Paint linePaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+    Paint paint = Paint()
+      ..color = Colors.white.withOpacity(0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
 
-    Path linePath = Path();
+    Path path = Path();
+    double waveHeight = size.height / 2;
+    double frequency = 2.0; // Higher frequency for more peaks
 
-    // Start the path at the left bottom corner
-    linePath.moveTo(0, size.height - 10); // Adjust 10 to change the line's vertical position
+    path.moveTo(0, waveHeight);
 
-    // Draw a straight line across the width of the screen
-    linePath.lineTo(size.width, size.height - 10); // Adjust 10 to change the line's vertical position
+    for (double i = 0; i <= size.width; i += 10) {
+      path.lineTo(i, waveHeight + 30 * (i % (size.width / frequency) > size.width / (2 * frequency) ? 1 : -1));
+    }
 
-    canvas.drawPath(linePath, linePaint);
+    canvas.drawPath(path, paint);
   }
 
   @override

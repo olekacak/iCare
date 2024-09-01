@@ -8,7 +8,7 @@ class HeartRateController {
   final Map<String, dynamic> _body = {};
   final Map<String, String> _headers = {};
   dynamic _resultData;
-  static const String esp32IpAddress = 'http://192.168.137.211';
+  static const String esp32IpAddress = 'http://192.168.137.48';
 
   HeartRateController({required this.path});
 
